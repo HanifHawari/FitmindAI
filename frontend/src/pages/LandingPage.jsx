@@ -1,35 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import './LandingPage.css'
-
-function DevNoticeModal({ onClose }) {
-  useEffect(() => {
-    const handleKey = (e) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', handleKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', handleKey)
-      document.body.style.overflow = ''
-    }
-  }, [onClose])
-
-  return (
-    <div className="dev-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="dev-modal-title">
-      <div className="dev-modal" onClick={e => e.stopPropagation()}>
-        <div className="dev-modal-icon" aria-hidden="true">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <line x1="12" y1="9" x2="12" y2="13" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-        </div>
-        <h2 id="dev-modal-title">Sedang dalam pengembangan</h2>
-        <p>Sistem sedang dalam pengembangan. Data dan tampilan dapat berubah sewaktu-waktu.</p>
-        <button className="dev-modal-close" onClick={onClose}>Mengerti</button>
-      </div>
-    </div>
-  )
-}
 
 const navItems = [
   { label: 'Manfaat', href: '#manfaat' },
@@ -145,14 +116,31 @@ function SectionHeading({ title, description }) {
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [showDevModal, setShowDevModal] = useState(false)
   const pageRef = useRef(null)
+  const headerRef = useRef(null)
+  const navigate = useNavigate()
 
+  // Link ke halaman aplikasi (login, daftar, fitur): navigasi SPA tanpa reload
   const handleAuthClick = (e) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return // biarkan buka di tab baru
     e.preventDefault()
     setMenuOpen(false)
-    setShowDevModal(true)
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    navigate(e.currentTarget.getAttribute('href'))
   }
+
+  // Menu dropdown mobile: tutup dengan Escape atau ketukan di luar header
+  useEffect(() => {
+    if (!menuOpen) return
+    const closeOnEscape = (e) => { if (e.key === 'Escape') setMenuOpen(false) }
+    const closeOnOutsideTap = (e) => { if (!headerRef.current?.contains(e.target)) setMenuOpen(false) }
+    document.addEventListener('keydown', closeOnEscape)
+    document.addEventListener('pointerdown', closeOnOutsideTap)
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape)
+      document.removeEventListener('pointerdown', closeOnOutsideTap)
+    }
+  }, [menuOpen])
 
   useEffect(() => {
     const page = pageRef.current
@@ -200,8 +188,7 @@ export default function LandingPage() {
 
   return (
     <div className="landing-page" ref={pageRef}>
-      {showDevModal && <DevNoticeModal onClose={() => setShowDevModal(false)} />}
-      <header className="landing-header">
+      <header className="landing-header" ref={headerRef}>
         <div className="landing-shell landing-header-inner">
           <Link className="landing-brand" to="/" aria-label="FitMindAI, beranda">
             FitMind<span>AI</span>
@@ -211,10 +198,6 @@ export default function LandingPage() {
             {navItems.map(item => (
               <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>
             ))}
-            <div className="landing-mobile-actions">
-              <a href="/login" onClick={handleAuthClick}>Masuk</a>
-              <a href="/register" className="landing-button landing-button-primary" onClick={handleAuthClick}>Daftar Gratis</a>
-            </div>
           </nav>
 
           <div className="landing-header-actions">

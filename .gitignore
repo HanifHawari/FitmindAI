@@ -8,8 +8,10 @@ __pycache__/
 *.pyo
 *.pyd
 
-# Environment
+# Environment (berisi token & password; hanya contoh yang boleh dikomit)
 backend/.env
+backend/.env.*
+!backend/.env.example
 
 # SQLite database
 backend/*.db

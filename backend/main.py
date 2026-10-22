@@ -6,16 +6,16 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.exc import InterfaceError, OperationalError, TimeoutError as PoolTimeoutError
 
 from config import APP_ENV, APP_HOST, APP_PORT, ALLOWED_ORIGINS
 from vector_store import init_vector_stores
-from database.db_engine import init_db
-from database.catalog_seed import seed_catalogs
-from routers import chat, workout, nutrition, programs, dashboard, users, plans, calendar, whatsapp
+from database.status import mark_database, prepare_database
+from routers import chat, workout, nutrition, programs, dashboard, users, plans, calendar, whatsapp, status
 
 # Direktori hasil build frontend (frontend/dist → di-copy ke backend/dist saat build)
 FRONTEND_DIST = Path(__file__).parent / "dist"
@@ -38,8 +38,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Inisialisasi database dan indeks vektor saat server startup."""
     logger.info("FitMind AI Backend starting...")
-    init_db()
-    seed_catalogs()
+    # Jika database tidak bisa diakses, server tetap jalan dalam mode maintenance
+    # dan /api/status akan menyiapkan database begitu koneksi pulih.
+    prepare_database()
     init_vector_stores()
     logger.info("Server siap menerima request!")
     yield
@@ -76,6 +77,19 @@ async def add_security_headers(request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+
+@app.exception_handler(OperationalError)
+@app.exception_handler(InterfaceError)
+@app.exception_handler(PoolTimeoutError)
+async def database_unavailable_handler(request: Request, exc: Exception):
+    """Database tidak bisa diakses (mis. kuota Neon habis) → frontend menampilkan maintenance."""
+    logger.error("Database tidak tersedia saat %s %s: %s", request.method, request.url.path, exc.__class__.__name__)
+    mark_database(False)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Layanan sedang dalam pemeliharaan.", "maintenance": True},
+    )
+
 # ==============================================================
 # Routers
 # ==============================================================
@@ -88,6 +102,7 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(plans.router,     prefix="/api/plans",     tags=["Plans"])
 app.include_router(calendar.router,  prefix="/api/calendar",  tags=["Calendar"])
 app.include_router(whatsapp.router,  prefix="/api/whatsapp",  tags=["WhatsApp"])
+app.include_router(status.router,    prefix="/api/status",    tags=["Status"])
 
 
 # ==============================================================

@@ -11,41 +11,6 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATASET_DIR = BASE_DIR / "dataset"
 
-def clean_programs_detailed():
-    logger.info("Memulai pembersihan dataset programs_detailed...")
-    input_path = DATASET_DIR / "program" / "programs_detailed_boostcamp_kaggle.csv"
-    output_path = DATASET_DIR / "program" / "cleaned_programs_detailed.csv"
-    
-    if not input_path.exists():
-        logger.warning(f"File {input_path} tidak ditemukan. Lewati.")
-        return
-
-    # Kolom yang benar-benar dibutuhkan oleh LLM/RAG
-    usecols = [
-        "title", "description", "level", "goal", "equipment",
-        "program_length", "time_per_workout", "week", "day",
-        "number_of_exercises", "exercise_name", "sets", "reps", "intensity"
-    ]
-    
-    try:
-        # Load dataset
-        df = pd.read_csv(input_path, usecols=lambda c: c in usecols, low_memory=False)
-        
-        # Hapus baris yang kosong semua di kolom utama
-        df.dropna(subset=["title", "exercise_name"], how="all", inplace=True)
-        
-        # Simpan
-        df.to_csv(output_path, index=False)
-        
-        original_size = os.path.getsize(input_path) / (1024 * 1024)
-        new_size = os.path.getsize(output_path) / (1024 * 1024)
-        
-        logger.info(f"✅ Berhasil membersihkan programs_detailed.")
-        logger.info(f"Ukuran asli: {original_size:.2f} MB")
-        logger.info(f"Ukuran baru: {new_size:.2f} MB")
-    except Exception as e:
-        logger.error(f"Gagal membersihkan programs_detailed: {e}")
-
 def clean_and_merge_nutrition():
     logger.info("Memulai penggabungan dan pembersihan dataset Nutrisi...")
     usda_path = DATASET_DIR / "nutrisiAI" / "comprehensive_foods_usda.csv"
@@ -131,6 +96,5 @@ if __name__ == "__main__":
     # Buat direktori scripts jika belum ada
     Path(__file__).parent.mkdir(parents=True, exist_ok=True)
     
-    clean_programs_detailed()
     clean_and_merge_nutrition()
     logger.info("=== SELESAI ===")

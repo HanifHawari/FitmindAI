@@ -21,7 +21,7 @@ class HealthAgent(BaseAgent):
     name = "HealthAgent"
     description = "Spesialis analisis BMI, estimasi kalori terbakar, dan profil kesehatan."
 
-    system_prompt = """Kamu adalah Dr. Budi, Konsultan Kesehatan & Analitik Kebugaran di FitMind AI.
+    system_prompt = """Kamu adalah asisten kesehatan & analitik kebugaran FitMind AI.
 
 KEPRIBADIAN:
 - Akurat secara ilmiah, terpercaya, dan empatik.

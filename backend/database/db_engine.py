@@ -14,14 +14,21 @@ logger = logging.getLogger(__name__)
 # ==============================================================
 # Engine
 # ==============================================================
-# connect_args hanya diperlukan untuk SQLite
-_connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+# SQLite butuh check_same_thread; PostgreSQL (Neon) diberi batas waktu koneksi
+# agar request cepat gagal dan mode maintenance aktif saat database tidak tersedia.
+if DATABASE_URL.startswith("sqlite"):
+    _engine_options = {"connect_args": {"check_same_thread": False}}
+else:
+    _engine_options = {"connect_args": {"connect_timeout": 10}, "pool_recycle": 300}
+    if DATABASE_URL.startswith("postgresql+psycopg:"):
+        # psycopg 3: matikan prepared statement otomatis agar aman lewat PgBouncer (pooler Neon)
+        _engine_options["connect_args"]["prepare_threshold"] = None
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args=_connect_args,
     pool_pre_ping=True,       # deteksi koneksi yang sudah mati sebelum dipakai
     echo=False,               # set True untuk debug SQL queries
+    **_engine_options,
 )
 
 # Aktifkan Foreign Key enforcement pada SQLite (by default SQLite mematikannya)

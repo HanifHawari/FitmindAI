@@ -4,7 +4,7 @@ Router: /api/programs
 from fastapi import APIRouter, Query
 from typing import Optional
 
-from data_loader import search_programs, get_program_detail
+from data_loader import search_programs
 from models import APIResponse
 from database.db_engine import SessionLocal
 from database.db_models import DBProgramSummary
@@ -56,25 +56,6 @@ async def get_equipment_types():
     with SessionLocal() as db:
         equip = db.query(DBProgramSummary.equipment).filter(DBProgramSummary.equipment.isnot(None)).distinct().all()
         return APIResponse(success=True, data=sorted([r[0] for r in equip if r[0]]))
-
-
-@router.get("/detail")
-async def get_program_detail_endpoint(
-    title: str = Query(..., description="Judul program (partial match)"),
-    week: Optional[int] = Query(None, description="Filter minggu tertentu"),
-    day: Optional[int] = Query(None, description="Filter hari tertentu"),
-):
-    """
-    Ambil detail latihan per program dari programs_detailed dataset.
-    File ini besar (294MB), dimuat secara lazy saat pertama kali dipanggil.
-    """
-    results = get_program_detail(title=title, week=week, day=day)
-    return APIResponse(
-        success=True,
-        data=results,
-        total=len(results),
-        message="programs_detail dimuat dari file 294MB" if results else "Program tidak ditemukan"
-    )
 
 
 @router.get("/stats")

@@ -1,0 +1,6 @@
+# Tool pengembangan, tidak dipasang di server:
+# scripts/data_preparation.py, scripts/ingest_vectordb.py, scripts/evaluator.py
+-r requirements.txt
+pandas>=2.0.0
+ragas>=0.1.0
+datasets>=2.19.0

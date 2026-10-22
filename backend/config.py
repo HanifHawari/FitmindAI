@@ -6,15 +6,22 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env dari folder backend/
+# Load .env dari folder backend/.
+# Set ENV_FILE=.env.production untuk memakai konfigurasi production dari komputer lokal
+# (mis. import data ke Neon). Di Railway file ini tidak ada; variabel diambil dari dashboard.
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env", override=True)
+ENV_FILE = BASE_DIR / os.getenv("ENV_FILE", ".env")
+load_dotenv(ENV_FILE, override=True)
 
 # ==============================================================
 # Gemini API
 # ==============================================================
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+# Anggaran "thinking" Gemini untuk AI Chat: 0 = dimatikan (token pertama ±1 detik, bukan 3-5 detik).
+# Kosongkan untuk memakai default model (mis. model yang tidak menerima nilai 0). AI Plan tidak terpengaruh.
+_thinking_budget = os.getenv("GEMINI_THINKING_BUDGET", "0").strip()
+GEMINI_THINKING_BUDGET: int | None = int(_thinking_budget) if _thinking_budget else None
 
 # ==============================================================
 # Fonnte API (WhatsApp)
@@ -33,6 +40,8 @@ APP_ENV: str = os.getenv("APP_ENV", "production")
 APP_HOST: str = os.getenv("APP_HOST", "0.0.0.0")
 # Railway menggunakan variabel environment bernama 'PORT', bukan 'APP_PORT'
 APP_PORT: int = int(os.getenv("PORT", os.getenv("APP_PORT", "8000")))
+# Saklar manual: true = tampilkan mode maintenance ke semua pengunjung
+MAINTENANCE_MODE: bool = os.getenv("MAINTENANCE_MODE", "false").strip().lower() == "true"
 
 # ==============================================================
 # Dataset Paths (relatif dari backend/)
@@ -45,9 +54,6 @@ MASTER_NUTRITION_CSV = DATASET_BASE / "nutrisiAI" / "master_nutrition.csv"
 # Healthy Foods Database untuk tab "Makanan Sehat"
 HEALTHY_FOODS_CSV = DATASET_BASE / "nutrisiAI" / "healthy_foods_database.csv"
 PROGRAMS_CSV      = DATASET_BASE / "program" / "program_summary.csv"
-# Menggunakan versi cleaned dari program detail
-PROGRAMS_DETAIL_CSV = DATASET_BASE / "program" / "cleaned_programs_detailed.csv"
-USER_PROFILES_CSV = DATASET_BASE / "userprofil" / "gym_members_exercise_tracking.csv"
 
 # ==============================================================
 # ChromaDB
@@ -57,12 +63,15 @@ CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", str(BASE_DIR / "chroma
 # ==============================================================
 # Database (SQLAlchemy)
 # ==============================================================
-# SQLite untuk development, ganti dengan PostgreSQL URL untuk production
-# Contoh PostgreSQL: postgresql+psycopg2://user:password@localhost:5432/fitmind_db
+# SQLite untuk development, PostgreSQL (Neon) untuk production.
+# URL "postgresql://..." yang disalin dari Neon otomatis memakai driver psycopg (v3) yang terpasang.
 DATABASE_URL: str = os.getenv(
     "DATABASE_URL",
     f"sqlite:///{BASE_DIR / 'fitmind.db'}"
 )
+for _prefix in ("postgres://", "postgresql://"):
+    if DATABASE_URL.startswith(_prefix):
+        DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len(_prefix):]
 
 # ==============================================================
 # CORS

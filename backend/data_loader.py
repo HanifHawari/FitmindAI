@@ -6,7 +6,7 @@ from sqlalchemy import or_
 
 from database.db_engine import SessionLocal
 from database.db_models import (
-    DBWorkout, DBMasterNutrition, DBProgramSummary, DBProgramDetail
+    DBWorkout, DBMasterNutrition, DBProgramSummary
 )
 
 # ==============================================================
@@ -174,36 +174,6 @@ def search_programs(
             "total_exercises": r.total_exercises,
             "created": r.created,
             "last_edit": r.last_edit
-        } for r in results]
-
-
-def get_program_detail(title: str, week: int = None, day: int = None) -> list[dict]:
-    with SessionLocal() as db:
-        q = db.query(DBProgramDetail)
-        q = q.filter(DBProgramDetail.title.ilike(f"%{title}%"))
-        
-        if week is not None:
-            q = q.filter(DBProgramDetail.week == week)
-        if day is not None:
-            q = q.filter(DBProgramDetail.day == day)
-            
-        results = q.limit(100).all()
-        
-        return [{
-            "title": r.title,
-            "description": r.description,
-            "level": r.level,
-            "goal": r.goal,
-            "equipment": r.equipment,
-            "program_length": r.program_length,
-            "time_per_workout": r.time_per_workout,
-            "week": r.week,
-            "day": r.day,
-            "number_of_exercises": r.number_of_exercises,
-            "exercise_name": r.exercise_name,
-            "sets": r.sets,
-            "reps": r.reps,
-            "intensity": r.intensity
         } for r in results]
 
 

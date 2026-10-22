@@ -3,6 +3,7 @@ venv/
 backend/.venv/
 backend/venv/
 backend/.env
+backend/.env.*
 backend/*.db
 node_modules/
 dataset/program/programs_detailed_boostcamp_kaggle.csv

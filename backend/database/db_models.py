@@ -228,21 +228,3 @@ class DBProgramSummary(Base):
     
     # Precomputed number
     _weeks_num = Column(Integer, index=True)
-    
-class DBProgramDetail(Base):
-    __tablename__ = "dataset_program_detail"
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(Text)
-    description = Column(Text)
-    level = Column(Text)
-    goal = Column(Text)
-    equipment = Column(Text)
-    program_length = Column(Text)
-    time_per_workout = Column(Text)
-    week = Column(Integer, index=True)
-    day = Column(Integer, index=True)
-    number_of_exercises = Column(Integer)
-    exercise_name = Column(Text)
-    sets = Column(Text)
-    reps = Column(Text)
-    intensity = Column(Text)

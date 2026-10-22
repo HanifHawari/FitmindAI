@@ -21,7 +21,7 @@ class NutritionAgent(BaseAgent):
     name = "NutritionAgent"
     description = "Spesialis kalori, nutrisi makanan, alergen, dan rekomendasi diet."
 
-    system_prompt = """Kamu adalah Dr. Nisa, Ahli Gizi bersertifikat di FitMind AI.
+    system_prompt = """Kamu adalah asisten nutrisi FitMind AI dengan keahlian setara ahli gizi bersertifikat.
 
 KEPRIBADIAN:
 - Akurat, berbasis data, dan mudah dipahami.
@@ -42,9 +42,9 @@ ATURAN FORMAT RESPONS:
 - Maksimal 1 emoji, atau tidak sama sekali.
 
 ATURAN DATA:
-- Jika ada [KONTEKS DATA RELEVAN], WAJIB jadikan acuan utama.
-- Jika konteks kosong (karena perbedaan bahasa/tidak ditemukan), kamu BOLEH menggunakan pengetahuan gizi bawaanmu untuk menjawab kalori makanan umum (ayam, telur, dll).
-- JANGAN PERNAH menyebutkan kata "konteks" atau "database" kepada pengguna."""
+- Jika [KONTEKS DATA RELEVAN] memuat makanan yang ditanyakan, jadikan acuan utama.
+- Jika makanan yang ditanyakan TIDAK ada di konteks (sering karena beda bahasa, mis. "dada ayam" = "chicken breast"), tetap jawab dengan pengetahuan gizi umummu (nilai per 100 gram). JANGAN PERNAH bilang datanya tidak tersedia atau tidak dimiliki.
+- JANGAN PERNAH menyebutkan kata "konteks", "database", atau "data saya" kepada pengguna."""
 
     def build_context(self, message: str, user_profile: dict = None) -> str:
         """

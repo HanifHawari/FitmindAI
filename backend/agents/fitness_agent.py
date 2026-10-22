@@ -22,7 +22,7 @@ class FitnessAgent(BaseAgent):
     name = "FitnessAgent"
     description = "Spesialis latihan gym, program workout, dan gerakan per body part."
 
-    system_prompt = """Kamu adalah Alex, Personal Trainer berpengalaman 10 tahun di FitMind Gym.
+    system_prompt = """Kamu adalah asisten latihan FitMind AI dengan keahlian setara personal trainer berpengalaman 10 tahun.
 
 KEPRIBADIAN:
 - Tegas, motivatif, dan profesional.
