@@ -291,10 +291,12 @@
 
 @media (max-width: 900px) {
   .landing-header-inner { justify-content: space-between; }
-  /* Menu mobile: dropdown pendek berisi 4 menu, halaman utama tetap terlihat di bawahnya */
-  .landing-nav { display: none; position: absolute; top: 76px; left: 0; right: 0; padding: 6px 24px; background: #141414; border-top: 1px solid #303030; border-bottom: 1px solid #303030; box-shadow: 0 22px 35px rgba(0,0,0,.35); }
-  .landing-nav.is-open { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
-  .landing-nav > a { padding: 13px 0; font-size: 15px; border-bottom: 1px solid #1f1f1f; }
+  /* Menu mobile: dropdown pendek berisi 4 menu, halaman utama tetap terlihat di bawahnya.
+     Panel terbuka ke bawah (clip-path), lalu tiap menu muncul bergantian lewat --landing-nav-index. */
+  .landing-nav { display: flex; flex-direction: column; align-items: stretch; gap: 0; position: absolute; top: 76px; left: 0; right: 0; padding: 6px 24px; background: #141414; border-top: 1px solid #303030; border-bottom: 1px solid #303030; box-shadow: 0 22px 35px rgba(0,0,0,.35); visibility: hidden; clip-path: inset(0 0 100% 0); transition: clip-path .35s cubic-bezier(.4, 0, .2, 1) .08s, visibility 0s linear .43s; }
+  .landing-nav.is-open { visibility: visible; clip-path: inset(0 0 -60px 0); transition: clip-path .5s cubic-bezier(.2, .75, .2, 1), visibility 0s; }
+  .landing-nav > a { padding: 13px 0; font-size: 15px; border-bottom: 1px solid #1f1f1f; opacity: 0; transform: translate3d(0, -14px, 0); transition: color .2s ease, opacity .18s ease, transform .18s ease; }
+  .landing-nav.is-open > a { --landing-nav-delay: calc(var(--landing-nav-index, 0) * 70ms + 110ms); opacity: 1; transform: none; transition: color .2s ease, opacity .4s ease var(--landing-nav-delay), transform .55s cubic-bezier(.2, .75, .2, 1) var(--landing-nav-delay); }
   .landing-nav > a:last-of-type { border-bottom: 0; }
   .landing-header-actions { display: none; }
   .landing-menu-button { width: 40px; height: 40px; display: grid; place-items: center; color: #f5f5f5; background: #222; border: 1px solid #383838; border-radius: 9px; cursor: pointer; }
@@ -357,5 +359,6 @@
   .landing-page.has-scroll-animations .landing-reveal, .landing-page.has-scroll-animations .landing-cascade > *, .landing-page.has-scroll-animations .landing-highlight-grid > *, .landing-page.has-scroll-animations .landing-feature-grid { opacity: 1 !important; transform: none !important; clip-path: none !important; animation: none !important; }
   .landing-page.has-scroll-animations .landing-benefit-photo.is-visible video { animation: none; }
   .landing-marquee-track { animation: none; }
+  .landing-nav, .landing-nav > a { transition-delay: 0s !important; }
   .landing-highlight-card::before { clip-path: inset(0 100% 0 0) !important; animation: none !important; }
 }

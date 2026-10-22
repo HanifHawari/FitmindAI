@@ -195,8 +195,8 @@ export default function LandingPage() {
           </Link>
 
           <nav id="landing-navigation" className={'landing-nav' + (menuOpen ? ' is-open' : '')} aria-label="Navigasi landing page">
-            {navItems.map(item => (
-              <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>
+            {navItems.map((item, index) => (
+              <a key={item.href} href={item.href} style={{ '--landing-nav-index': index }} onClick={() => setMenuOpen(false)}>{item.label}</a>
             ))}
           </nav>
 
