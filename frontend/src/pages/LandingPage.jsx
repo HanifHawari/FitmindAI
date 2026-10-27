@@ -113,9 +113,9 @@ function SectionHeading({ title, description }) {
   )
 }
 
-// Slider foto di mobile: bisa digeser dengan sentuhan atau drag mouse, dan (jika autoplayMs diisi)
-// bergeser otomatis selama terlihat di layar. Di layar lebar hook ini tidak melakukan apa-apa.
-function useMobileSlider(ref, autoplayMs = 0) {
+// Slider foto di mobile: bergeser otomatis tiap autoplayMs selama terlihat di layar, dan (jika
+// interactive) bisa digeser dengan sentuhan atau drag mouse. Di layar lebar hook ini tidak melakukan apa-apa.
+function useMobileSlider(ref, autoplayMs = 0, { interactive = true } = {}) {
   useEffect(() => {
     const track = ref.current
     if (!track) return
@@ -153,7 +153,7 @@ function useMobileSlider(ref, autoplayMs = 0) {
       const startedAt = performance.now()
       track.classList.add('is-sliding')
       const step = now => {
-        const progress = Math.min(1, (now - startedAt) / 450)
+        const progress = Math.min(1, (now - startedAt) / (interactive ? 450 : 350))
         track.scrollLeft = from + distance * (1 - (1 - progress) ** 3)
         if (progress < 1) frame = requestAnimationFrame(step)
         else cancelSlide()
@@ -168,7 +168,7 @@ function useMobileSlider(ref, autoplayMs = 0) {
     const stop = () => { clearInterval(timer); timer = null }
     const start = () => {
       stop()
-      if (autoplayMs && mobile.matches && inView && !reducedMotion && !drag) timer = setInterval(next, autoplayMs)
+      if (autoplayMs && mobile.matches && inView && !document.hidden && !reducedMotion && !drag) timer = setInterval(next, autoplayMs)
     }
 
     // Geser dengan mouse maupun jari ditangani di sini (CSS touch-action: pan-y menyerahkan
@@ -217,12 +217,17 @@ function useMobileSlider(ref, autoplayMs = 0) {
     }, { threshold: 0.4 })
     observer.observe(track)
 
-    track.addEventListener('pointerdown', onPointerDown)
-    track.addEventListener('click', onClickCapture, true)
-    track.addEventListener('dragstart', preventNativeDrag)
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
-    window.addEventListener('pointercancel', onPointerCancel)
+    // Slider khusus autoplay tidak menerima geseran agar tidak bertabrakan dengan animasinya
+    if (interactive) {
+      track.addEventListener('pointerdown', onPointerDown)
+      track.addEventListener('click', onClickCapture, true)
+      window.addEventListener('pointermove', onPointerMove)
+      window.addEventListener('pointerup', onPointerUp)
+      window.addEventListener('pointercancel', onPointerCancel)
+      track.addEventListener('dragstart', preventNativeDrag)
+    }
+    // Tab disembunyikan: browser menghentikan animasi, jadi autoplay ikut berhenti sampai tab terlihat lagi
+    document.addEventListener('visibilitychange', start)
     mobile.addEventListener('change', start)
 
     return () => {
@@ -235,9 +240,10 @@ function useMobileSlider(ref, autoplayMs = 0) {
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
       window.removeEventListener('pointercancel', onPointerCancel)
+      document.removeEventListener('visibilitychange', start)
       mobile.removeEventListener('change', start)
     }
-  }, [ref, autoplayMs])
+  }, [ref, autoplayMs, interactive])
 }
 
 export default function LandingPage() {
@@ -296,8 +302,8 @@ export default function LandingPage() {
   }, [])
 
   useMobileSlider(highlightRef, 2000)
-  useMobileSlider(featureRef, 3000)
-  useMobileSlider(galleryRef)
+  useMobileSlider(featureRef, 2000, { interactive: false })
+  useMobileSlider(galleryRef, 2000, { interactive: false })
 
   // Tombol chat melayang naik setinggi bagian footer yang terlihat, agar tidak menutupi teks hak cipta
   useEffect(() => {

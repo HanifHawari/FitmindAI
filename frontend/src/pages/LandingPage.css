@@ -298,26 +298,26 @@
   .landing-highlights { padding-block: 18px 70px; }
   /* Slider satu foto per layar: kartu selebar area konten, jarak antar kartu = padding samping (20px)
      sehingga foto di sebelahnya tidak ikut terlihat di tepi kiri/kanan */
-  .landing-highlight-grid { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; cursor: grab; }
-  .landing-highlight-grid::-webkit-scrollbar { display: none; }
-  /* Saat di-drag dengan mouse atau sedang dianimasikan (lihat useMobileSlider), snap dimatikan sementara */
-  .landing-highlight-grid.is-dragging, .landing-marquee-track.is-dragging, .landing-gallery-grid.is-dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
+  .landing-highlight-grid { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; cursor: grab; }
+  /* Saat di-drag dengan mouse (highlight) atau sedang dianimasikan (lihat useMobileSlider), snap dimatikan sementara */
+  .landing-highlight-grid.is-dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
   .landing-highlight-grid.is-sliding, .landing-marquee-track.is-sliding, .landing-gallery-grid.is-sliding { scroll-snap-type: none; }
   /* Geser horizontal dengan jari ditangani useMobileSlider; scroll vertikal halaman tetap normal */
-  .landing-highlight-grid, .landing-marquee-track, .landing-gallery-grid { touch-action: pan-y; }
+  .landing-highlight-grid { touch-action: pan-y; }
   .landing-highlight-card, .landing-highlight-card:last-child { flex: 0 0 100%; grid-column: auto; min-height: 380px; scroll-snap-align: center; scroll-snap-stop: always; }
   .landing-benefit-copy h2 { font-size: clamp(34px, 9vw, 47px); }
   .landing-benefit-photo { min-height: 420px; }
   /* Fitur: marquee desktop diganti slider satu kartu yang bergeser otomatis */
   .landing-marquee-outer::before, .landing-marquee-outer::after { display: none; }
-  .landing-marquee-track { width: auto; gap: 20px; animation: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; cursor: grab; }
-  .landing-marquee-track::-webkit-scrollbar { display: none; }
+  /* Hanya bergeser otomatis: overflow hidden menolak geseran jari/trackpad, scroll lewat JS tetap jalan */
+  .landing-marquee-track { width: auto; gap: 20px; animation: none; overflow-x: hidden; scroll-snap-type: x mandatory; }
   .landing-feature-card { flex: 0 0 100%; min-height: 430px; scroll-snap-align: center; scroll-snap-stop: always; }
   .landing-feature-card.is-duplicate { display: none; }
   .landing-feature-content { padding: 24px; }
   /* Sama seperti slider highlight: satu foto penuh per layar */
-  .landing-gallery-grid { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; cursor: grab; }
-  .landing-gallery-grid::-webkit-scrollbar { display: none; }
+  .landing-gallery-grid { display: flex; gap: 20px; overflow-x: hidden; scroll-snap-type: x mandatory; }
+  /* Slider fitur & galeri di mobile hanya tontonan: tidak bisa disentuh, diklik, atau digeser */
+  .landing-marquee-track, .landing-gallery-grid { pointer-events: none; }
   .landing-gallery-card { flex: 0 0 100%; min-height: 380px; scroll-snap-align: center; scroll-snap-stop: always; }
   .landing-gallery-card:nth-child(n+4) { display: block; }
   .landing-chat-copy h2 { font-size: 36px; }
