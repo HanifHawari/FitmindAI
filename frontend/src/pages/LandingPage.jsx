@@ -113,11 +113,142 @@ function SectionHeading({ title, description }) {
   )
 }
 
+// Slider foto di mobile: bisa digeser dengan sentuhan atau drag mouse, dan (jika autoplayMs diisi)
+// bergeser otomatis selama terlihat di layar. Di layar lebar hook ini tidak melakukan apa-apa.
+function useMobileSlider(ref, autoplayMs = 0) {
+  useEffect(() => {
+    const track = ref.current
+    if (!track) return
+    const mobile = window.matchMedia('(max-width: 640px)')
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let timer = null
+    let inView = false
+    let drag = null
+    let suppressClick = false
+    let frame = null
+
+    // Lewati kartu yang disembunyikan di mobile (mis. salinan kartu untuk marquee desktop)
+    const cards = () => Array.from(track.children).filter(card => card.getClientRects().length > 0)
+    const offsetOf = index => cards()[index].offsetLeft - cards()[0].offsetLeft
+    const nearestIndex = () => {
+      const offsets = cards().map((_, index) => Math.abs(offsetOf(index) - track.scrollLeft))
+      return offsets.indexOf(Math.min(...offsets))
+    }
+    const cancelSlide = () => {
+      cancelAnimationFrame(frame)
+      frame = null
+      track.classList.remove('is-sliding')
+    }
+    // Animasi geser sendiri, bukan scrollTo({ behavior: 'smooth' }): scroll smooth bawaan browser
+    // terputus saat gambar lazy di kartu berikutnya selesai dimuat, sehingga slider berhenti di tengah.
+    // Snap dimatikan selama animasi lalu aktif lagi tepat di posisi kartu.
+    const scrollToIndex = index => {
+      cancelSlide()
+      const from = track.scrollLeft
+      const distance = offsetOf(index) - from
+      if (reducedMotion || Math.abs(distance) < 1) {
+        track.scrollLeft = from + distance
+        return
+      }
+      const startedAt = performance.now()
+      track.classList.add('is-sliding')
+      const step = now => {
+        const progress = Math.min(1, (now - startedAt) / 450)
+        track.scrollLeft = from + distance * (1 - (1 - progress) ** 3)
+        if (progress < 1) frame = requestAnimationFrame(step)
+        else cancelSlide()
+      }
+      frame = requestAnimationFrame(step)
+    }
+    const next = () => {
+      const atEnd = track.scrollLeft >= track.scrollWidth - track.clientWidth - 2
+      const index = nearestIndex() + 1
+      scrollToIndex(atEnd || index >= cards().length ? 0 : index)
+    }
+    const stop = () => { clearInterval(timer); timer = null }
+    const start = () => {
+      stop()
+      if (autoplayMs && mobile.matches && inView && !reducedMotion && !drag) timer = setInterval(next, autoplayMs)
+    }
+
+    // Geser dengan mouse maupun jari ditangani di sini (CSS touch-action: pan-y menyerahkan
+    // geser horizontal ke JS, scroll vertikal halaman tetap oleh browser). Arah geseran yang
+    // menentukan kartu tujuan, jadi tidak perlu menyeret lebih dari setengah kartu untuk pindah.
+    const onPointerDown = e => {
+      if (!mobile.matches || !e.isPrimary || drag || (e.pointerType === 'mouse' && e.button !== 0)) return
+      cancelSlide()
+      drag = { id: e.pointerId, x: e.clientX, left: track.scrollLeft, index: nearestIndex(), time: performance.now(), dx: 0, moved: false }
+      track.classList.add('is-dragging')
+      stop()
+    }
+    const onPointerMove = e => {
+      if (!drag || e.pointerId !== drag.id) return
+      drag.dx = e.clientX - drag.x
+      if (Math.abs(drag.dx) > 5) drag.moved = true
+      track.scrollLeft = drag.left - drag.dx
+    }
+    const endDrag = (e, cancelled) => {
+      if (!drag || e.pointerId !== drag.id) return
+      track.classList.remove('is-dragging')
+      if (drag.moved && !cancelled) {
+        suppressClick = true // drag tidak boleh dianggap klik pada kartu
+        setTimeout(() => { suppressClick = false }, 0)
+      }
+      // Kibasan cepat cukup 15px, geseran pelan 40px; selain itu kembali ke kartu semula
+      const threshold = performance.now() - drag.time < 250 ? 15 : 40
+      const step = cancelled ? 0 : drag.dx <= -threshold ? 1 : drag.dx >= threshold ? -1 : 0
+      scrollToIndex(Math.max(0, Math.min(cards().length - 1, drag.index + step)))
+      drag = null
+      start()
+    }
+    const onPointerUp = e => endDrag(e, false)
+    // Browser mengambil alih gestur (mis. jari bergerak vertikal untuk scroll halaman)
+    const onPointerCancel = e => endDrag(e, true)
+    const onClickCapture = e => {
+      if (!suppressClick) return
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    const preventNativeDrag = e => e.preventDefault()
+
+    const observer = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting
+      start()
+    }, { threshold: 0.4 })
+    observer.observe(track)
+
+    track.addEventListener('pointerdown', onPointerDown)
+    track.addEventListener('click', onClickCapture, true)
+    track.addEventListener('dragstart', preventNativeDrag)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerCancel)
+    mobile.addEventListener('change', start)
+
+    return () => {
+      stop()
+      cancelSlide()
+      observer.disconnect()
+      track.removeEventListener('pointerdown', onPointerDown)
+      track.removeEventListener('click', onClickCapture, true)
+      track.removeEventListener('dragstart', preventNativeDrag)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerCancel)
+      mobile.removeEventListener('change', start)
+    }
+  }, [ref, autoplayMs])
+}
+
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const pageRef = useRef(null)
   const headerRef = useRef(null)
   const highlightRef = useRef(null)
+  const featureRef = useRef(null)
+  const galleryRef = useRef(null)
+  const footerRef = useRef(null)
+  const floatingChatRef = useRef(null)
   const navigate = useNavigate()
 
   // Link ke halaman aplikasi (login, daftar, fitur): navigasi SPA tanpa reload
@@ -164,92 +295,30 @@ export default function LandingPage() {
     }
   }, [])
 
-  // Foto highlight di mobile: slider yang bisa digeser (sentuh atau drag mouse)
-  // dan bergeser otomatis tiap 2 detik selama terlihat di layar
+  useMobileSlider(highlightRef, 2000)
+  useMobileSlider(featureRef, 3000)
+  useMobileSlider(galleryRef)
+
+  // Tombol chat melayang naik setinggi bagian footer yang terlihat, agar tidak menutupi teks hak cipta
   useEffect(() => {
-    const track = highlightRef.current
-    if (!track) return
-    const mobile = window.matchMedia('(max-width: 640px)')
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    let timer = null
-    let inView = false
-    let drag = null
-    let suppressClick = false
-
-    const cards = () => Array.from(track.children)
-    const offsetOf = index => cards()[index].offsetLeft - cards()[0].offsetLeft
-    const nearestIndex = () => {
-      const offsets = cards().map((_, index) => Math.abs(offsetOf(index) - track.scrollLeft))
-      return offsets.indexOf(Math.min(...offsets))
+    const footer = footerRef.current
+    const button = floatingChatRef.current
+    if (!footer || !button) return
+    // Dihitung langsung (cukup satu pembacaan posisi), tanpa requestAnimationFrame yang bisa tertunda
+    const update = () => {
+      const lift = Math.max(0, window.innerHeight - footer.getBoundingClientRect().top)
+      button.style.setProperty('--landing-chat-lift', `${Math.round(lift)}px`)
     }
-    const scrollToIndex = index => track.scrollTo({ left: offsetOf(index), behavior: 'smooth' })
-    const next = () => {
-      const atEnd = track.scrollLeft >= track.scrollWidth - track.clientWidth - 2
-      const index = nearestIndex() + 1
-      scrollToIndex(atEnd || index >= cards().length ? 0 : index)
-    }
-    const stop = () => { clearInterval(timer); timer = null }
-    const start = () => {
-      stop()
-      if (mobile.matches && inView && !reducedMotion && !drag) timer = setInterval(next, 2000)
-    }
-
-    const onPointerDown = e => {
-      if (e.pointerType !== 'mouse' || e.button !== 0 || !mobile.matches) return
-      drag = { x: e.clientX, left: track.scrollLeft, moved: false }
-      track.classList.add('is-dragging')
-      stop()
-    }
-    const onPointerMove = e => {
-      if (!drag) return
-      const dx = e.clientX - drag.x
-      if (Math.abs(dx) > 5) drag.moved = true
-      track.scrollLeft = drag.left - dx
-    }
-    const onPointerUp = () => {
-      if (!drag) return
-      track.classList.remove('is-dragging')
-      if (drag.moved) {
-        suppressClick = true // drag tidak boleh dianggap klik pada kartu
-        setTimeout(() => { suppressClick = false }, 0)
-        scrollToIndex(nearestIndex())
-      }
-      drag = null
-      start()
-    }
-    const onClickCapture = e => {
-      if (!suppressClick) return
-      e.preventDefault()
-      e.stopPropagation()
-    }
-    const preventNativeDrag = e => e.preventDefault()
-
-    const observer = new IntersectionObserver(([entry]) => {
-      inView = entry.isIntersecting
-      start()
-    }, { threshold: 0.4 })
-    observer.observe(track)
-
-    track.addEventListener('pointerdown', onPointerDown)
-    track.addEventListener('click', onClickCapture, true)
-    track.addEventListener('dragstart', preventNativeDrag)
-    track.addEventListener('touchstart', stop, { passive: true })
-    track.addEventListener('touchend', start)
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
-    mobile.addEventListener('change', start)
-
+    // Observer menangkap perubahan posisi footer yang bukan karena scroll (mis. layout bergeser)
+    const observer = new IntersectionObserver(update, { threshold: Array.from({ length: 21 }, (_, i) => i / 20) })
+    observer.observe(footer)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
     return () => {
-      stop()
       observer.disconnect()
-      track.removeEventListener('pointerdown', onPointerDown)
-      track.removeEventListener('click', onClickCapture, true)
-      track.removeEventListener('dragstart', preventNativeDrag)
-      track.removeEventListener('touchstart', stop)
-      track.removeEventListener('touchend', start)
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
-      mobile.removeEventListener('change', start)
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
     }
   }, [])
 
@@ -368,17 +437,22 @@ export default function LandingPage() {
               description="Pilih fitur yang kamu perlukan, dari mencari gerakan hingga membuat rencana latihan dan makan."
             />
             <div className="landing-marquee-outer" aria-label="Fitur FitMindAI">
-              <div className="landing-marquee-track">
-                {[...features, ...features].map((feature, i) => (
-                  <a className="landing-feature-card" href={feature.to} key={feature.title + i} onClick={handleAuthClick}>
-                    <img className="landing-feature-media" src={feature.image} alt="" loading="lazy" />
-                    <span className="landing-feature-shade" aria-hidden="true" />
-                    <span className="landing-feature-content">
-                      <h3>{feature.title}</h3>
-                      <p>{feature.description}</p>
-                    </span>
-                  </a>
-                ))}
+              <div className="landing-marquee-track" ref={featureRef}>
+                {/* Kartu digandakan agar marquee desktop berputar mulus; salinannya disembunyikan di mobile */}
+                {[...features, ...features].map((feature, i) => {
+                  const duplicate = i >= features.length
+                  return (
+                    <a className={'landing-feature-card' + (duplicate ? ' is-duplicate' : '')} href={feature.to} key={feature.title + i} onClick={handleAuthClick}
+                      aria-hidden={duplicate || undefined} tabIndex={duplicate ? -1 : undefined}>
+                      <img className="landing-feature-media" src={feature.image} alt="" loading="lazy" />
+                      <span className="landing-feature-shade" aria-hidden="true" />
+                      <span className="landing-feature-content">
+                        <h3>{feature.title}</h3>
+                        <p>{feature.description}</p>
+                      </span>
+                    </a>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -419,7 +493,7 @@ export default function LandingPage() {
               title="Temukan ritme yang cocok untukmu."
               description="Pilih titik awalmu, susun rencana, lalu gunakan fitur yang kamu perlukan sepanjang perjalanan."
             />
-            <div className="landing-gallery-grid landing-cascade" data-reveal>
+            <div className="landing-gallery-grid landing-cascade" ref={galleryRef} data-reveal>
               {gallery.map(item => (
                 <a className="landing-gallery-card" href={item.to} key={item.title} onClick={handleAuthClick}>
                   <img src={item.image} alt="" loading="lazy" />
@@ -449,20 +523,11 @@ export default function LandingPage() {
 
       </main>
 
-      <footer className="landing-footer">
-        <div className="landing-shell landing-footer-grid landing-reveal" data-reveal>
-          <div>
-            <Link className="landing-brand" to="/">FitMind<span>AI</span></Link>
-            <p>Platform kebugaran berbasis AI untuk latihan, nutrisi, dan rencana yang lebih terarah.</p>
-          </div>
-          <nav aria-label="Jelajahi"><h3>Jelajahi</h3>{navItems.map(item => <a key={item.href} href={item.href}>{item.label}</a>)}</nav>
-          <nav aria-label="Aplikasi"><h3>Aplikasi</h3><a href="/plan" onClick={handleAuthClick}>AI Plan</a><a href="/nutrition" onClick={handleAuthClick}>Nutrisi</a><a href="/workout" onClick={handleAuthClick}>Workout</a></nav>
-          <nav aria-label="Akun"><h3>Akun</h3><a href="/login" onClick={handleAuthClick}>Masuk</a><a href="/register" onClick={handleAuthClick}>Daftar</a></nav>
-        </div>
+      <footer className="landing-footer" ref={footerRef}>
         <div className="landing-shell landing-footer-bottom"><span>© {new Date().getFullYear()} FitMindAI. Semua hak dilindungi.</span></div>
       </footer>
 
-      <a className="landing-floating-chat" href="/chat" aria-label="Buka AI Chat" title="Buka AI Chat" onClick={handleAuthClick}>
+      <a className="landing-floating-chat" ref={floatingChatRef} href="/chat" aria-label="Buka AI Chat" title="Buka AI Chat" onClick={handleAuthClick}>
         <img src="/robot-hello.svg" alt="" />
       </a>
     </div>
