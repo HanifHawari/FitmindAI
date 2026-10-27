@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import api from '../api'
+import api, { errorDetail } from '../api'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -29,8 +29,8 @@ export default function LoginPage() {
       // Always redirect to dashboard on successful login
       window.location.href = '/dashboard'
     } catch (err) {
-      if (err.response?.status === 401 || err.response?.status === 400) {
-        setError(err.response.data.detail || 'Username tidak ditemukan')
+      if ([400, 401, 429].includes(err.response?.status)) {
+        setError(errorDetail(err, 'Username atau password salah.'))
       } else if (err.response?.status === 422) {
         setError('Format data tidak valid')
       } else {

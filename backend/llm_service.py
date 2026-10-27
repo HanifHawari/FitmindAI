@@ -21,7 +21,7 @@ Flow:
 import logging
 from typing import AsyncGenerator
 
-from agents.supervisor import SupervisorAgent, _classify_by_regex, AGENT_REGISTRY
+from agents.supervisor import SupervisorAgent, _classify_by_regex
 
 logger = logging.getLogger(__name__)
 
@@ -93,18 +93,6 @@ def detect_intent(message: str) -> tuple[str, dict]:
 # ==============================================================
 # Utility — untuk endpoint /api/chat/intents dan debugging
 # ==============================================================
-
-# Untuk backward-compatibility dengan endpoint GET /intents di chat.py
-INTENT_PATTERNS = {
-    name: agent.description
-    for name, agent in AGENT_REGISTRY.items()
-}
-
-
-def get_active_agent() -> str:
-    """Kembalikan nama agent yang terakhir aktif (untuk debugging)."""
-    return _supervisor.get_last_agent()
-
 
 def list_agents() -> dict[str, str]:
     """Kembalikan semua agent yang terdaftar."""

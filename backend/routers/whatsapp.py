@@ -6,18 +6,24 @@ import logging
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional, Union
 from config import FONNTE_TOKEN
 from auth import get_current_user
 from database.db_models import User
+from rate_limit import RateLimiter
+from routers.users import normalize_phone
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Nomor tujuan belum diverifikasi, jadi batasi jumlah kiriman per akun: 5 pesan per jam
+_send_limiter = RateLimiter(limit=5, window=60 * 60)
+
 class WorkoutExercise(BaseModel):
     name: str = Field(..., max_length=100)
-    sets: int
-    reps: str = Field(..., max_length=50)
+    # AI kadang menulis set sebagai rentang teks, mis. "3-4"
+    sets: Union[int, Annotated[str, Field(max_length=20)]] = Field(..., union_mode="left_to_right")
+    reps: Union[int, Annotated[str, Field(max_length=50)]] = Field(..., union_mode="left_to_right")
 
 
 class WorkoutDay(BaseModel):
@@ -29,7 +35,7 @@ class WorkoutDay(BaseModel):
 class MealFood(BaseModel):
     name: str = Field(..., max_length=100)
     portion: str = Field(..., max_length=50)
-    calories: int
+    calories: Union[int, float] = Field(..., union_mode="left_to_right")
 
 
 class MealEntry(BaseModel):
@@ -80,10 +86,21 @@ async def send_plan_whatsapp(request: WhatsAppSendRequest, current_user: User = 
     if not FONNTE_TOKEN or FONNTE_TOKEN == "ISI_TOKEN_FONNTE_ANDA_DISINI":
         raise HTTPException(status_code=400, detail="Fonnte Token belum dikonfigurasi di .env")
         
+    retry_after = _send_limiter.retry_after(str(current_user.id))
+    if retry_after:
+        raise HTTPException(
+            status_code=429,
+            detail="Batas pengiriman WhatsApp tercapai. Coba lagi nanti.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     # 1. Bersihkan nomor HP (pastikan mulai dari 08 atau 628)
-    phone = (current_user.phone or "").strip()
-    if not phone:
+    if not (current_user.phone or "").strip():
         raise HTTPException(status_code=400, detail="Nomor WhatsApp akun belum tersedia.")
+    # Akun lama bisa menyimpan nomor yang belum tervalidasi (mis. beberapa nomor dipisah koma)
+    phone = normalize_phone(current_user.phone)
+    if not phone:
+        raise HTTPException(status_code=400, detail="Nomor WhatsApp akun tidak valid.")
     if phone.startswith("0"):
         phone = "62" + phone[1:]
     elif phone.startswith("+"):
@@ -108,6 +125,7 @@ async def send_plan_whatsapp(request: WhatsAppSendRequest, current_user: User = 
         "countryCode": "62", # Default Indonesia
     }
 
+    _send_limiter.hit(str(current_user.id))
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.post(url, headers=headers, data=data, timeout=15.0)

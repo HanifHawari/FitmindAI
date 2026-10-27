@@ -2,63 +2,19 @@ import { Link, NavLink } from 'react-router-dom'
 import { useState } from 'react'
 import UserAvatar from './UserAvatar'
 
-// SVG Icons — transparan seperti sketsa outline
-const Icons = {
-  dashboard: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.45">
-      <rect x="3" y="3" width="7" height="7" rx="1"/>
-      <rect x="14" y="3" width="7" height="7" rx="1"/>
-      <rect x="3" y="14" width="7" height="7" rx="1"/>
-      <rect x="14" y="14" width="7" height="7" rx="1"/>
-    </svg>
-  ),
-  chat: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.45">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      <line x1="9" y1="10" x2="15" y2="10"/>
-      <line x1="9" y1="14" x2="13" y2="14"/>
-    </svg>
-  ),
-  nutrition: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.45">
-      <path d="M12 2a9 9 0 0 1 9 9c0 4.97-4.03 9-9 9S3 15.97 3 11a9 9 0 0 1 9-9z"/>
-      <path d="M12 2c0 4-2 7-2 9s2 5 2 9"/>
-      <path d="M5.5 9h13"/>
-    </svg>
-  ),
-  workout: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.45">
-      <path d="M6 5v14"/>
-      <path d="M18 5v14"/>
-      <path d="M3 8h3"/>
-      <path d="M3 16h3"/>
-      <path d="M18 8h3"/>
-      <path d="M18 16h3"/>
-      <path d="M6 12h12"/>
-    </svg>
-  ),
-  profile: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.45">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
-    </svg>
-  ),
-  plan: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.45">
-      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
-      <rect x="9" y="3" width="6" height="4" rx="1"/>
-      <path d="M9 14l2 2 4-4"/>
-    </svg>
-  ),
+// Ikon menu dari public/icons/menu. PNG dipakai sebagai mask CSS supaya
+// warnanya mengikuti `color` menu (abu-abu biasa, hijau saat aktif).
+function NavIcon({ src }) {
+  return <span className="nav-icon" style={{ '--nav-icon': `url(${src})` }} aria-hidden="true" />
 }
 
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', iconKey: 'dashboard' },
-  { to: '/chat',      label: 'AI Chat',   iconKey: 'chat'      },
-  { to: '/plan',      label: 'AI Plan',   iconKey: 'plan'      },
-  { to: '/nutrition', label: 'Nutrition', iconKey: 'nutrition' },
-  { to: '/workout',   label: 'Workout',   iconKey: 'workout'   },
-  { to: '/profile',   label: 'Profile',   iconKey: 'profile'   },
+  { to: '/dashboard', label: 'Dashboard', icon: '/icons/menu/dashboard.png' },
+  { to: '/chat',      label: 'AI Chat',   icon: '/icons/menu/ai-chat.png'   },
+  { to: '/plan',      label: 'AI Plan',   icon: '/icons/menu/ai-plan.png'   },
+  { to: '/nutrition', label: 'Nutrition', icon: '/icons/menu/nutrition.png' },
+  { to: '/workout',   label: 'Workout',   icon: '/icons/menu/workout.png'   },
+  { to: '/profile',   label: 'Profile',   icon: '/icons/menu/profile.png'   },
 ]
 
 export default function Sidebar({ username, avatarData }) {
@@ -118,9 +74,8 @@ export default function Sidebar({ username, avatarData }) {
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
               onClick={() => setMobileOpen(false)}
             >
-              {/* Icon transparan background besar */}
               <span className="nav-icon-bg">
-                {Icons[item.iconKey]}
+                <NavIcon src={item.icon} />
               </span>
               {item.label}
             </NavLink>
@@ -144,7 +99,7 @@ export default function Sidebar({ username, avatarData }) {
       <nav className="sidebar-bottom-nav" aria-label="Navigasi utama">
         {navItems.filter(item => item.to !== '/nutrition').map(item => (
           <NavLink key={item.to} to={item.to} end={item.to === '/dashboard'}>
-            {Icons[item.iconKey]}
+            <NavIcon src={item.icon} />
             <span>{item.to === '/dashboard' ? 'Home' : item.to === '/plan' ? 'Plan' : item.to === '/profile' ? 'Profil' : item.label}</span>
           </NavLink>
         ))}
@@ -201,8 +156,16 @@ export default function Sidebar({ username, avatarData }) {
         .nav-item.active .nav-icon-bg {
           background: rgba(34,197,94,0.12);
         }
-        .nav-item.active .nav-icon-bg svg {
-          stroke: #22c55e;
+        .nav-icon {
+          width: 20px;
+          height: 20px;
+          flex-shrink: 0;
+          background-color: currentColor;
+          -webkit-mask: var(--nav-icon) center / contain no-repeat;
+          mask: var(--nav-icon) center / contain no-repeat;
+          opacity: 0.45;
+        }
+        .nav-item.active .nav-icon {
           opacity: 0.8;
         }
         .nav-item:hover .nav-icon-bg {

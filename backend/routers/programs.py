@@ -14,13 +14,13 @@ router = APIRouter()
 
 
 @router.get("")
-async def list_programs(
-    level: Optional[str] = Query(None, description="beginner | intermediate | advanced"),
-    goal: Optional[str] = Query(None, description="muscle gain | weight loss | strength | endurance"),
-    equipment: Optional[str] = Query(None, description="Full Gym | Garage Gym | Dumbbell Only"),
-    max_weeks: Optional[int] = Query(None, description="Maksimal durasi program (minggu)"),
-    q: Optional[str] = Query(None, description="Keyword search"),
-    limit: int = Query(20, le=100),
+def list_programs(
+    level: Optional[str] = Query(None, max_length=30, description="beginner | intermediate | advanced"),
+    goal: Optional[str] = Query(None, max_length=50, description="muscle gain | weight loss | strength | endurance"),
+    equipment: Optional[str] = Query(None, max_length=50, description="Full Gym | Garage Gym | Dumbbell Only"),
+    max_weeks: Optional[int] = Query(None, ge=1, le=520, description="Maksimal durasi program (minggu)"),
+    q: Optional[str] = Query(None, max_length=100, description="Keyword search"),
+    limit: int = Query(20, ge=1, le=100),
 ):
     """Cari dan filter program latihan."""
     results = search_programs(
@@ -35,7 +35,7 @@ async def list_programs(
 
 
 @router.get("/levels")
-async def get_levels():
+def get_levels():
     """Daftar level yang tersedia."""
     with SessionLocal() as db:
         levels = db.query(DBProgramSummary.level).filter(DBProgramSummary.level.isnot(None)).distinct().all()
@@ -43,7 +43,7 @@ async def get_levels():
 
 
 @router.get("/goals")
-async def get_goals():
+def get_goals():
     """Daftar goal yang tersedia."""
     with SessionLocal() as db:
         goals = db.query(DBProgramSummary.goal).filter(DBProgramSummary.goal.isnot(None)).distinct().all()
@@ -51,7 +51,7 @@ async def get_goals():
 
 
 @router.get("/equipment")
-async def get_equipment_types():
+def get_equipment_types():
     """Daftar equipment yang tersedia."""
     with SessionLocal() as db:
         equip = db.query(DBProgramSummary.equipment).filter(DBProgramSummary.equipment.isnot(None)).distinct().all()
@@ -59,7 +59,7 @@ async def get_equipment_types():
 
 
 @router.get("/stats")
-async def get_program_stats():
+def get_program_stats():
     """Statistik ringkasan dari program library."""
     with SessionLocal() as db:
         total = db.query(DBProgramSummary).count()

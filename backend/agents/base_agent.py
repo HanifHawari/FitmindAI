@@ -133,6 +133,9 @@ class BaseAgent:
             final_message = f"{message}\n\n---\n[KONTEKS DATA RELEVAN]\n{context}\n---"
         messages.append(HumanMessage(content=final_message))
         
+        if not plan_llm:
+            logger.error(f"[{self.name}] LLM tidak terkonfigurasi (periksa GEMINI_API_KEY).")
+            return {}
         try:
             resp = await plan_llm.ainvoke(messages)
             content = resp.text

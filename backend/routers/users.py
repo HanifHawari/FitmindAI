@@ -13,8 +13,10 @@ Alur:
 import logging
 import base64
 import binascii
+import re
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from database.db_engine import get_db
@@ -24,15 +26,32 @@ from models import (
     APIResponse, AvatarUpdate, UserCreate, UserProfileUpdate,
     UserResponse
 )
+from rate_limit import RateLimiter
 import bcrypt
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Handler di file ini memakai `def` biasa: query database dan bcrypt bersifat blocking,
+# sehingga FastAPI menjalankannya di threadpool dan event loop tetap melayani request lain.
+
+# Batasi tebakan password: 10 kali gagal per username dalam 15 menit
+_login_failures = RateLimiter(limit=10, window=15 * 60)
+# Dicocokkan saat username tidak ada agar waktu respons tidak membocorkan username terdaftar
+_DUMMY_HASH = bcrypt.hashpw(b"fitmind-dummy-password", bcrypt.gensalt())
+# Satu nomor saja, 8-15 digit (opsional diawali +); mencegah daftar nomor dipakai sebagai target WhatsApp
+_PHONE_PATTERN = re.compile(r"^\+?\d{8,15}$")
+
 
 # ==============================================================
 # Helper
 # ==============================================================
+
+def normalize_phone(phone: str) -> str:
+    """Hapus spasi/strip lalu validasi format nomor. Kembalikan string kosong jika tidak valid."""
+    cleaned = re.sub(r"[\s-]", "", phone or "")
+    return cleaned if _PHONE_PATTERN.fullmatch(cleaned) else ""
+
 
 def _get_owned_user(username: str, current_user: User) -> User:
     if current_user.username != username:
@@ -50,21 +69,31 @@ def _compute_bmi(weight_kg: Optional[float], height_m: Optional[float]) -> Optio
 # POST /login — get-or-create user
 # ==============================================================
 @router.post("/login", response_model=UserResponse)
-async def login(body: UserCreate, db: Session = Depends(get_db)):
+def login(body: UserCreate, db: Session = Depends(get_db)):
     """
-    Masuk berdasarkan username.
-    Jika tidak ada → 404.
+    Masuk berdasarkan username dan password.
+    Gagal → 401; terlalu banyak percobaan gagal → 429.
     """
     username = body.username.strip()
+    limit_key = username.lower()
+    retry_after = _login_failures.retry_after(limit_key)
+    if retry_after:
+        raise HTTPException(
+            status_code=429,
+            detail="Terlalu banyak percobaan login. Coba lagi beberapa menit lagi.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     existing = db.query(User).filter(User.username == username).first()
-    
-    if not existing:
-        raise HTTPException(status_code=401, detail="Username atau password salah.")
-        
     password_bytes = body.password.encode("utf-8")
-    if len(password_bytes) > 72 or not existing.password_hash or not bcrypt.checkpw(password_bytes, existing.password_hash.encode("utf-8")):
+    stored_hash = existing.password_hash.encode("utf-8") if existing and existing.password_hash else _DUMMY_HASH
+    password_ok = len(password_bytes) <= 72 and bcrypt.checkpw(password_bytes, stored_hash)
+
+    if not existing or not existing.password_hash or not password_ok:
+        _login_failures.hit(limit_key)
         raise HTTPException(status_code=401, detail="Username atau password salah.")
 
+    _login_failures.reset(limit_key)
     logger.info(f"User login: '{username}' (id={existing.id})")
     return UserResponse(
         id=existing.id,
@@ -78,7 +107,7 @@ async def login(body: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
+def get_me(current_user: User = Depends(get_current_user)):
     return UserResponse(
         id=current_user.id,
         username=current_user.username,
@@ -90,7 +119,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.put("/me/avatar", response_model=APIResponse)
-async def save_avatar(
+def save_avatar(
     body: AvatarUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -110,7 +139,7 @@ async def save_avatar(
 
 
 @router.delete("/me/avatar", response_model=APIResponse)
-async def delete_avatar(
+def delete_avatar(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -119,14 +148,14 @@ async def delete_avatar(
     return APIResponse(message="Foto profil dihapus.")
 
 @router.post("/register", response_model=UserResponse)
-async def register(body: UserCreate, db: Session = Depends(get_db)):
+def register(body: UserCreate, db: Session = Depends(get_db)):
     """
     Daftar berdasarkan username.
     Jika sudah ada → 400.
     """
     username = body.username.strip()
     existing = db.query(User).filter(User.username == username).first()
-    
+
     if existing:
         raise HTTPException(status_code=400, detail="Username sudah terdaftar. Silakan login.")
 
@@ -135,12 +164,20 @@ async def register(body: UserCreate, db: Session = Depends(get_db)):
 
     if not body.phone:
         raise HTTPException(status_code=400, detail="Nomor WhatsApp wajib diisi untuk keamanan automation.")
+    phone = normalize_phone(body.phone)
+    if not phone:
+        raise HTTPException(status_code=400, detail="Nomor WhatsApp tidak valid. Gunakan satu nomor, misalnya 081234567890.")
 
     hashed_password = bcrypt.hashpw(body.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     # Buat user baru
-    new_user = User(username=username, phone=body.phone.strip(), password_hash=hashed_password)
+    new_user = User(username=username, phone=phone, password_hash=hashed_password)
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Dua pendaftaran username yang sama di waktu bersamaan
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Username sudah terdaftar. Silakan login.") from None
     db.refresh(new_user)
     logger.info(f"User baru dibuat: '{username}' (id={new_user.id})")
 
@@ -157,7 +194,7 @@ async def register(body: UserCreate, db: Session = Depends(get_db)):
 # GET /profile — ambil profil kebugaran
 # ==============================================================
 @router.get("/{username}/profile")
-async def get_profile(username: str, current_user: User = Depends(get_current_user)):
+def get_profile(username: str, current_user: User = Depends(get_current_user)):
     """Ambil profil kebugaran user. 404 jika user belum ada, 204 jika profil belum diisi."""
     user = _get_owned_user(username, current_user)
 
@@ -197,7 +234,7 @@ async def get_profile(username: str, current_user: User = Depends(get_current_us
 # PUT /profile — simpan / update profil
 # ==============================================================
 @router.put("/{username}/profile")
-async def upsert_profile(
+def upsert_profile(
     username: str,
     body: UserProfileUpdate,
     db: Session = Depends(get_db),
@@ -238,7 +275,7 @@ async def upsert_profile(
 # GET /sessions — daftar sesi chat user
 # ==============================================================
 @router.get("/{username}/sessions")
-async def get_sessions(
+def get_sessions(
     username: str,
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -273,7 +310,7 @@ async def get_sessions(
 # GET /sessions/{session_id}/messages — riwayat pesan
 # ==============================================================
 @router.get("/{username}/sessions/{session_id}/messages")
-async def get_session_messages(
+def get_session_messages(
     username: str,
     session_id: int,
     db: Session = Depends(get_db),
@@ -320,7 +357,7 @@ async def get_session_messages(
 # DELETE /sessions/{session_id} — hapus sesi
 # ==============================================================
 @router.delete("/{username}/sessions/{session_id}")
-async def delete_session(
+def delete_session(
     username: str,
     session_id: int,
     db: Session = Depends(get_db),

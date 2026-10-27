@@ -11,18 +11,18 @@ router = APIRouter()
 
 
 @router.get("/search")
-async def search_food(
-    q: Optional[str] = Query(None, description="Nama makanan"),
+def search_food(
+    q: Optional[str] = Query(None, max_length=100, description="Nama makanan"),
     max_calories: Optional[float] = Query(None, description="Maksimal kalori per 100g"),
     min_health_score: Optional[float] = Query(None, description="Minimal health score (0-100)"),
-    food_type: Optional[str] = Query(None, description="Tipe makanan"),
+    food_type: Optional[str] = Query(None, max_length=50, description="Tipe makanan"),
     no_gluten: bool = Query(False),
     no_dairy: bool = Query(False),
     no_nuts: bool = Query(False),
     no_soy: bool = Query(False),
     no_eggs: bool = Query(False),
     no_fish: bool = Query(False),
-    limit: int = Query(20, le=100),
+    limit: int = Query(20, ge=1, le=100),
 ):
     """
     Cari makanan dengan filter nutrisi dan alergen.
@@ -58,10 +58,10 @@ from database.db_engine import SessionLocal
 from database.db_models import DBMasterNutrition
 
 @router.get("/healthy")
-async def get_healthy_foods(
-    food_type: Optional[str] = Query(None, description="Tipe: Vegetable, Fruit, Protein, dll"),
+def get_healthy_foods(
+    food_type: Optional[str] = Query(None, max_length=50, description="Tipe: Vegetable, Fruit, Protein, dll"),
     min_score: float = Query(60, description="Minimal health score"),
-    limit: int = Query(20, le=100),
+    limit: int = Query(20, ge=1, le=100),
 ):
     """Ambil makanan sehat dari database."""
     with SessionLocal() as db:
@@ -87,7 +87,7 @@ async def get_healthy_foods(
 
 
 @router.get("/food-types")
-async def get_food_types():
+def get_food_types():
     """Daftar unique food types dari dataset."""
     with SessionLocal() as db:
         results = db.query(DBMasterNutrition.food_type).distinct().all()
@@ -96,9 +96,9 @@ async def get_food_types():
 
 
 @router.get("/meal-plan")
-async def generate_meal_plan(
-    target_calories: int = Query(2000, description="Target kalori harian"),
-    diet_type: Optional[str] = Query(None, description="vegan | vegetarian | keto"),
+def generate_meal_plan(
+    target_calories: int = Query(2000, ge=500, le=10000, description="Target kalori harian"),
+    diet_type: Optional[str] = Query(None, max_length=30, description="vegan | vegetarian | keto"),
     no_gluten: bool = Query(False),
     no_dairy: bool = Query(False),
 ):
@@ -184,7 +184,7 @@ async def generate_meal_plan(
 
 
 @router.get("/nutriscore-stats")
-async def get_nutriscore_distribution():
+def get_nutriscore_distribution():
     """Distribusi health score dari dataset makanan sehat menggunakan SQL."""
     with SessionLocal() as db:
         # Menghitung secara efisien dengan kondisi SQL

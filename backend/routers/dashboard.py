@@ -2,6 +2,8 @@
 Router: /api/dashboard
 Statistik referensi dari dataset untuk dashboard & kalkulasi personal.
 """
+from typing import Optional
+
 from fastapi import APIRouter, Query
 
 from data_loader import get_user_stats_summary
@@ -11,7 +13,7 @@ router = APIRouter()
 
 
 @router.get("/stats")
-async def get_dataset_stats():
+def get_dataset_stats():
     """Statistik agregat dari gym members dataset (referensi benchmarking)."""
     stats = get_user_stats_summary()
     return APIResponse(success=True, data=stats)
@@ -21,7 +23,7 @@ from database.db_engine import SessionLocal
 from database.db_models import DBWorkout, DBMasterNutrition, DBProgramSummary
 
 @router.get("/dataset-overview")
-async def get_dataset_overview():
+def get_dataset_overview():
     """Ringkasan semua dataset yang tersedia (Query DB)."""
     with SessionLocal() as db:
         workouts_count = db.query(DBWorkout).count()
@@ -39,8 +41,8 @@ async def get_dataset_overview():
 
 @router.get("/calculate-bmi")
 async def calculate_bmi(
-    weight_kg: float = Query(..., description="Berat badan (kg)"),
-    height_m: float = Query(..., description="Tinggi badan (meter)"),
+    weight_kg: float = Query(..., gt=0, le=500, description="Berat badan (kg)"),
+    height_m: float = Query(..., gt=0, le=3, description="Tinggi badan (meter)"),
 ):
     """Hitung BMI dan kategori."""
     if height_m <= 0:
@@ -80,11 +82,11 @@ async def calculate_bmi(
 
 @router.get("/estimate-calories")
 async def estimate_calories_burned(
-    age: int = Query(..., description="Usia"),
-    weight_kg: float = Query(..., description="Berat badan (kg)"),
-    avg_bpm: int = Query(..., description="Average heart rate selama sesi"),
-    duration_hours: float = Query(..., description="Durasi sesi (jam)"),
-    workout_type: str = Query("Strength", description="HIIT | Cardio | Strength | Yoga"),
+    age: int = Query(..., ge=1, le=120, description="Usia"),
+    weight_kg: float = Query(..., gt=0, le=500, description="Berat badan (kg)"),
+    avg_bpm: int = Query(..., ge=20, le=250, description="Average heart rate selama sesi"),
+    duration_hours: float = Query(..., gt=0, le=24, description="Durasi sesi (jam)"),
+    workout_type: str = Query("Strength", max_length=20, description="HIIT | Cardio | Strength | Yoga"),
 ):
     """
     Estimasi kalori terbakar berdasarkan formula Keytel et al.
@@ -123,10 +125,10 @@ async def estimate_calories_burned(
 
 @router.get("/bpm-analysis")
 async def analyze_heart_rate(
-    age: int = Query(..., description="Usia pengguna"),
-    avg_bpm: int = Query(..., description="BPM rata-rata sesi"),
-    max_bpm: int = Query(None, description="BPM maksimal sesi"),
-    resting_bpm: int = Query(None, description="BPM istirahat"),
+    age: int = Query(..., ge=1, le=120, description="Usia pengguna"),
+    avg_bpm: int = Query(..., ge=20, le=250, description="BPM rata-rata sesi"),
+    max_bpm: Optional[int] = Query(None, ge=20, le=250, description="BPM maksimal sesi"),
+    resting_bpm: Optional[int] = Query(None, ge=20, le=250, description="BPM istirahat"),
 ):
     """Analisis heart rate dan zona latihan."""
     max_hr_theory = 220 - age

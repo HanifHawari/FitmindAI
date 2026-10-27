@@ -111,18 +111,6 @@ class SupervisorAgent:
         async for chunk in agent.stream(message, chat_history, context):
             yield chunk
 
-    async def route_and_run(
-        self,
-        message: str,
-        chat_history: list[dict],
-        user_profile: dict = None
-    ) -> str:
-        """Non-streaming version dari route_and_stream()."""
-        full = ""
-        async for chunk in self.route_and_stream(message, chat_history, user_profile):
-            full += chunk
-        return full
-
     def get_last_agent(self) -> str:
         """Kembalikan nama agent yang terakhir menangani pesan."""
         return self.last_delegated_agent

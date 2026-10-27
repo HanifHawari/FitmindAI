@@ -2,6 +2,9 @@
 Exercise API Service
 Menghubungkan ke ExerciseDB via RapidAPI untuk mendapatkan data latihan + GIF animasi.
 """
+import re
+from urllib.parse import quote
+
 import httpx
 from config import RAPIDAPI_KEY
 
@@ -19,6 +22,19 @@ BODY_PART_MAP = {
     "shoulders": "shoulders", "abs": "waist", "bicep": "upper arms", "tricep": "upper arms",
     "core": "waist", "cardio": "cardio", "neck": "neck",
 }
+
+
+# ID ExerciseDB berupa teks pendek (mis. "0001"); dipakai untuk menolak input lain
+_EXERCISE_ID = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+
+
+def is_valid_exercise_id(exercise_id: str) -> bool:
+    return bool(_EXERCISE_ID.fullmatch(exercise_id or ""))
+
+
+def _segment(value: str) -> str:
+    """Encode input user sebagai satu segmen path agar "/" atau ".." tidak mengubah endpoint tujuan."""
+    return quote(value, safe="")
 
 
 # Cache translasi instruksi untuk mempercepat pencarian yang sama
@@ -91,7 +107,7 @@ async def search_by_name(name: str, limit: int = 12) -> list[dict]:
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             res = await client.get(
-                f"{BASE_URL}/exercises/name/{name.lower().strip()}",
+                f"{BASE_URL}/exercises/name/{_segment(name.lower().strip())}",
                 headers=HEADERS,
                 params={"limit": limit, "offset": 0},
             )
@@ -109,7 +125,7 @@ async def search_by_body_part(body_part: str, limit: int = 12) -> list[dict]:
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             res = await client.get(
-                f"{BASE_URL}/exercises/bodyPart/{mapped}",
+                f"{BASE_URL}/exercises/bodyPart/{_segment(mapped)}",
                 headers=HEADERS,
                 params={"limit": limit, "offset": 0},
             )
@@ -140,10 +156,12 @@ async def get_all_exercises_gif(limit: int = 24) -> list[dict]:
 
 async def get_exercise_detail(exercise_id: str) -> dict | None:
     """Ambil detail lengkap satu exercise berdasarkan ID."""
+    if not is_valid_exercise_id(exercise_id):
+        return None
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             res = await client.get(
-                f"{BASE_URL}/exercises/exercise/{exercise_id}",
+                f"{BASE_URL}/exercises/exercise/{_segment(exercise_id)}",
                 headers=HEADERS,
             )
             if res.status_code == 200:
@@ -165,9 +183,11 @@ async def get_all_body_parts() -> list[str]:
     return []
 
 
-# Simple in-memory cache for GIFs (exercise_id -> bytes)
+# Simple in-memory cache for GIFs (exercise_id -> bytes), dibatasi total ukurannya
+# karena GIF resolusi 1080 bisa berukuran beberapa MB per file
 _gif_cache = {}
-MAX_CACHE_SIZE = 100
+MAX_CACHE_BYTES = 40 * 1024 * 1024
+_gif_cache_bytes = 0
 
 async def fetch_exercise_gif(exercise_id: str) -> bytes | None:
     """
@@ -176,6 +196,9 @@ async def fetch_exercise_gif(exercise_id: str) -> bytes | None:
     menyediakan endpoint /image?exerciseId=<id>&resolution=<res> yang memerlukan
     RapidAPI key di header. Backend melakukan proxy agar frontend bisa menampilkan gambar.
     """
+    global _gif_cache_bytes
+    if not is_valid_exercise_id(exercise_id):
+        return None
     # Cek di cache dulu agar tidak memanggil RapidAPI berulang kali
     if exercise_id in _gif_cache:
         return _gif_cache[exercise_id]
@@ -190,10 +213,13 @@ async def fetch_exercise_gif(exercise_id: str) -> bytes | None:
             if res.status_code == 200:
                 ct = res.headers.get("content-type", "")
                 if "image" in ct or "gif" in ct:
-                    # Simpan ke cache jika batas belum tercapai (mencegah memory leak)
-                    if len(_gif_cache) >= MAX_CACHE_SIZE:
-                        _gif_cache.pop(next(iter(_gif_cache))) # Hapus elemen pertama
-                    _gif_cache[exercise_id] = res.content
+                    # Simpan ke cache; buang entri terlama sampai muat (mencegah memory leak)
+                    size = len(res.content)
+                    if size <= MAX_CACHE_BYTES:
+                        while _gif_cache and _gif_cache_bytes + size > MAX_CACHE_BYTES:
+                            _gif_cache_bytes -= len(_gif_cache.pop(next(iter(_gif_cache))))
+                        _gif_cache[exercise_id] = res.content
+                        _gif_cache_bytes += size
                     return res.content
             print(f"[ExerciseDB] fetch_exercise_gif status={res.status_code} for id={exercise_id}")
     except Exception as e:

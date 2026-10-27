@@ -118,6 +118,7 @@ export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const pageRef = useRef(null)
   const headerRef = useRef(null)
+  const highlightRef = useRef(null)
   const navigate = useNavigate()
 
   // Link ke halaman aplikasi (login, daftar, fitur): navigasi SPA tanpa reload
@@ -161,6 +162,95 @@ export default function LandingPage() {
     return () => {
       observer.disconnect()
       page.classList.remove('has-scroll-animations')
+    }
+  }, [])
+
+  // Foto highlight di mobile: slider yang bisa digeser (sentuh atau drag mouse)
+  // dan bergeser otomatis tiap 2 detik selama terlihat di layar
+  useEffect(() => {
+    const track = highlightRef.current
+    if (!track) return
+    const mobile = window.matchMedia('(max-width: 640px)')
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let timer = null
+    let inView = false
+    let drag = null
+    let suppressClick = false
+
+    const cards = () => Array.from(track.children)
+    const offsetOf = index => cards()[index].offsetLeft - cards()[0].offsetLeft
+    const nearestIndex = () => {
+      const offsets = cards().map((_, index) => Math.abs(offsetOf(index) - track.scrollLeft))
+      return offsets.indexOf(Math.min(...offsets))
+    }
+    const scrollToIndex = index => track.scrollTo({ left: offsetOf(index), behavior: 'smooth' })
+    const next = () => {
+      const atEnd = track.scrollLeft >= track.scrollWidth - track.clientWidth - 2
+      const index = nearestIndex() + 1
+      scrollToIndex(atEnd || index >= cards().length ? 0 : index)
+    }
+    const stop = () => { clearInterval(timer); timer = null }
+    const start = () => {
+      stop()
+      if (mobile.matches && inView && !reducedMotion && !drag) timer = setInterval(next, 2000)
+    }
+
+    const onPointerDown = e => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || !mobile.matches) return
+      drag = { x: e.clientX, left: track.scrollLeft, moved: false }
+      track.classList.add('is-dragging')
+      stop()
+    }
+    const onPointerMove = e => {
+      if (!drag) return
+      const dx = e.clientX - drag.x
+      if (Math.abs(dx) > 5) drag.moved = true
+      track.scrollLeft = drag.left - dx
+    }
+    const onPointerUp = () => {
+      if (!drag) return
+      track.classList.remove('is-dragging')
+      if (drag.moved) {
+        suppressClick = true // drag tidak boleh dianggap klik pada kartu
+        setTimeout(() => { suppressClick = false }, 0)
+        scrollToIndex(nearestIndex())
+      }
+      drag = null
+      start()
+    }
+    const onClickCapture = e => {
+      if (!suppressClick) return
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    const preventNativeDrag = e => e.preventDefault()
+
+    const observer = new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting
+      start()
+    }, { threshold: 0.4 })
+    observer.observe(track)
+
+    track.addEventListener('pointerdown', onPointerDown)
+    track.addEventListener('click', onClickCapture, true)
+    track.addEventListener('dragstart', preventNativeDrag)
+    track.addEventListener('touchstart', stop, { passive: true })
+    track.addEventListener('touchend', start)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+    mobile.addEventListener('change', start)
+
+    return () => {
+      stop()
+      observer.disconnect()
+      track.removeEventListener('pointerdown', onPointerDown)
+      track.removeEventListener('click', onClickCapture, true)
+      track.removeEventListener('dragstart', preventNativeDrag)
+      track.removeEventListener('touchstart', stop)
+      track.removeEventListener('touchend', start)
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      mobile.removeEventListener('change', start)
     }
   }, [])
 
@@ -239,7 +329,7 @@ export default function LandingPage() {
         </section>
 
         <section className="landing-highlights" aria-label="Jelajahi FitMindAI">
-          <div className="landing-shell landing-highlight-grid" data-reveal>
+          <div className="landing-shell landing-highlight-grid" ref={highlightRef} data-reveal>
             {highlights.map((item, index) => (
               <a className={'landing-highlight-card landing-highlight-card-' + (index + 1)} key={item.to} href={item.to} aria-label={item.label} onClick={handleAuthClick}>
                 <img className="landing-highlight-media" src={item.image} alt="" loading="lazy" />
@@ -375,7 +465,10 @@ export default function LandingPage() {
       </footer>
 
       <a className="landing-floating-chat" href="/chat" aria-label="Buka AI Chat" title="Buka AI Chat" onClick={handleAuthClick}>
-        <img src="/pp-ai.png" alt="" />
+        <picture>
+          <source srcSet="/pp-ai.png" media="(prefers-reduced-motion: reduce)" />
+          <img src="/chatbot-live.gif" alt="" />
+        </picture>
       </a>
     </div>
   )

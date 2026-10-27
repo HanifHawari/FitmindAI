@@ -5,8 +5,14 @@ backend/venv/
 backend/.env
 backend/.env.*
 backend/*.db
+backend/tests/
 node_modules/
-dataset/program/programs_detailed_boostcamp_kaggle.csv
 __pycache__/
 .git/
 .env
+
+# Dataset mentah: hanya dipakai tool pengembangan (scripts/data_preparation.py), tidak dibaca server
+dataset/program/programs_detailed_boostcamp_kaggle.csv
+dataset/program/cleaned_programs_detailed.csv
+dataset/nutrisiAI/comprehensive_foods_usda.csv
+dataset/nutrisiAI/foods_health_scores_allergens.csv

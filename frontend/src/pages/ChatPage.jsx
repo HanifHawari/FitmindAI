@@ -108,8 +108,12 @@ export default function ChatPage({ user }) {
     setMessages(prev => [...prev, userMsg, aiMsg])
     setStreaming(true)
 
-    // Build history (exclude the last 2 just added)
-    const history = messages.map(m => ({ role: m.role, content: m.content }))
+    // Build history (exclude the last 2 just added). Backend hanya memakai 10 pesan terakhir
+    // dan membatasi panjang tiap pesan, jadi jawaban AI yang sangat panjang dipotong.
+    const history = messages
+      .filter(m => m.content)
+      .slice(-10)
+      .map(m => ({ role: m.role, content: m.content.slice(0, 20000) }))
 
     try {
       const body = {
@@ -168,6 +172,14 @@ export default function ChatPage({ user }) {
             }
             if (json.session_id) {
               setActiveSessionId(json.session_id)
+            }
+            if (json.error) {
+              setMessages(prev => {
+                const updated = [...prev]
+                const last = updated[updated.length - 1]
+                updated[updated.length - 1] = { ...last, content: last.content || json.error }
+                return updated
+              })
             }
           } catch {}
         }
@@ -289,7 +301,12 @@ export default function ChatPage({ user }) {
         {/* Messages */}
         <div className="chat-messages" style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {messages.length === 0 && (
-            <div style={{ textAlign: 'center', marginTop: '25vh' }}>
+            <div style={{ textAlign: 'center', marginTop: '14vh' }}>
+              <picture>
+                <source srcSet="/pp-ai.png" media="(prefers-reduced-motion: reduce)" />
+                <img src="/chatbot-live.gif" alt="" width={150} height={123}
+                  style={{ display: 'block', margin: '0 auto 8px', objectFit: 'contain' }} />
+              </picture>
               <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 10 }}>
                 FitMind<span style={{ color: '#22c55e' }}>AI</span>
               </div>

@@ -41,7 +41,9 @@ export default function DashboardPage({ user }) {
             <p>Temukan gerakan yang cocok dan susun rencana latihan sesuai tujuanmu.</p>
             <Link className="dash-hero-cta" to="/plan"><span>Buat rencana latihan</span><span aria-hidden="true">→</span></Link>
           </div>
-          <img className="dash-hero-image" src="/logo.jpg" alt="Logo FitMindAI" />
+          <div className="dash-hero-image">
+            <img className="dash-hero-logo" src="/logo-transparent.png" alt="Logo FitMindAI" />
+          </div>
         </section>
         <div className="dash-metrics" aria-label="Ringkasan profil">
           <div><strong>{profile?.bmi ?? '—'}</strong><span>BMI tersimpan</span></div>

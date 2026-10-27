@@ -16,16 +16,11 @@ backend/.env.*
 # SQLite database
 backend/*.db
 
-# Hasil build frontend
-# backend/dist/
+# Hasil build frontend: backend/dist/ sengaja dikomit karena disajikan oleh backend (Railway)
 
 # Dataset besar
 dataset/program/cleaned_programs_detailed.csv
 dataset/program/programs_detailed_boostcamp_kaggle.csv
-
-# TinyGPT binary tokenizer models
-tinyGPT_temp/tokenizer_*.model
-tinyGPT_temp/__pycache__/
 
 # OS files
 .DS_Store

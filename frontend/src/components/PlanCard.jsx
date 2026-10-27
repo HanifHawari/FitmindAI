@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import api from '../api'
+import api, { errorDetail } from '../api'
 import { useToast, ToastContainer } from './Toast'
 
 /**
@@ -60,7 +60,7 @@ export function WorkoutPlanCard({ plan, generationTime }) {
         showToast('Program latihan berhasil dikirim ke WhatsApp kamu!', 'success', { title: 'Terkirim!' })
       }
     } catch (err) {
-      const detail = err.response?.data?.detail || ''
+      const detail = errorDetail(err, '')
       const isToken = detail.toLowerCase().includes('token') || detail.toLowerCase().includes('fonnte')
       showToast(
         isToken
@@ -266,7 +266,7 @@ export function MealPlanCard({ plan, generationTime }) {
         showToast('Meal plan berhasil dikirim ke WhatsApp kamu!', 'success', { title: 'Terkirim!' })
       }
     } catch (err) {
-      const detail = err.response?.data?.detail || ''
+      const detail = errorDetail(err, '')
       const isToken = detail.toLowerCase().includes('token') || detail.toLowerCase().includes('fonnte')
       showToast(
         isToken

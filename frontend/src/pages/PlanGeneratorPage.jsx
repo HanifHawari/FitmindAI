@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Sidebar from '../components/Sidebar'
 import { WorkoutPlanCard, MealPlanCard } from '../components/PlanCard'
-import api from '../api'
+import api, { errorDetail } from '../api'
 
 const GOALS = [
   { value: 'muscle_gain', label: 'Massa Otot', desc: 'Hypertrophy & strength' },
@@ -60,7 +60,7 @@ export default function PlanGeneratorPage({ user }) {
         setError('Gagal generate plan. Coba lagi.')
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Terjadi error. Pastikan backend berjalan.')
+      setError(errorDetail(err, 'Terjadi error. Pastikan backend berjalan.'))
     }
     setLoading(false)
   }

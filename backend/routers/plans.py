@@ -75,9 +75,12 @@ async def generate_plan(request: PlanGenerateRequest):
             response_schema=schema,
             system_prompt_override=prompt,
         )
-        logger.info(f"[Plans] Generated {plan_type} plan: {result.get('title', 'untitled')}")
-        return APIResponse(success=True, data=result)
-
     except Exception as e:
         logger.error(f"[Plans] Error generating plan: {e}")
         raise HTTPException(status_code=500, detail="Gagal membuat rencana. Silakan coba lagi.")
+
+    # generate_structured mengembalikan {} saat LLM gagal atau JSON-nya tidak valid
+    if not isinstance(result, dict) or not result:
+        raise HTTPException(status_code=502, detail="Gagal membuat rencana. Silakan coba lagi.")
+    logger.info(f"[Plans] Generated {plan_type} plan: {result.get('title', 'untitled')}")
+    return APIResponse(success=True, data=result)

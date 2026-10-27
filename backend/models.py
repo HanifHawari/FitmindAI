@@ -2,7 +2,7 @@
 FitMind AI - Pydantic Models (Request & Response Schemas)
 """
 from pydantic import BaseModel, Field
-from typing import Literal, Optional, List
+from typing import Annotated, Literal, Optional, List
 
 
 # ==============================================================
@@ -10,24 +10,25 @@ from typing import Literal, Optional, List
 # ==============================================================
 
 class ChatMessage(BaseModel):
+    # Riwayat ikut berisi jawaban AI yang bisa jauh lebih panjang dari pesan user
     role: Literal["user", "assistant"]
-    content: str = Field(..., max_length=2000, description="Isi pesan")
+    content: str = Field(..., max_length=20000, description="Isi pesan")
 
 
 class UserProfile(BaseModel):
     """Profil user yang disimpan di localStorage frontend."""
-    name: Optional[str] = None
-    age: Optional[int] = None
-    gender: Optional[str] = None
-    weight_kg: Optional[float] = None
-    height_m: Optional[float] = None
-    bmi: Optional[float] = None
-    goal: Optional[str] = None  # weight_loss | muscle_gain | maintenance | endurance
-    experience_level: Optional[str] = None  # beginner | intermediate | advanced
-    workout_frequency: Optional[int] = None  # hari/minggu
-    session_duration: Optional[float] = None  # jam/sesi
-    workout_type: Optional[str] = None  # HIIT | Cardio | Strength | Yoga | Mixed
-    equipment: Optional[str] = None
+    name: Optional[str] = Field(None, max_length=50)
+    age: Optional[int] = Field(None, ge=1, le=120)
+    gender: Optional[str] = Field(None, max_length=10)
+    weight_kg: Optional[float] = Field(None, gt=0, le=500)
+    height_m: Optional[float] = Field(None, gt=0, le=3)
+    bmi: Optional[float] = Field(None, ge=0, le=200)
+    goal: Optional[str] = Field(None, max_length=50)  # weight_loss | muscle_gain | maintenance | endurance
+    experience_level: Optional[str] = Field(None, max_length=20)  # beginner | intermediate | advanced
+    workout_frequency: Optional[int] = Field(None, ge=0, le=14)  # hari/minggu
+    session_duration: Optional[float] = Field(None, ge=0, le=1440)  # menit/sesi
+    workout_type: Optional[str] = Field(None, max_length=50)  # HIIT | Cardio | Strength | Yoga | Mixed
+    equipment: Optional[str] = Field(None, max_length=100)
     # Alergen
     no_gluten: Optional[bool] = False
     no_dairy: Optional[bool] = False
@@ -36,7 +37,7 @@ class UserProfile(BaseModel):
     no_eggs: Optional[bool] = False
     no_fish: Optional[bool] = False
     # Diet
-    diet_type: Optional[str] = None  # vegan | vegetarian | keto | paleo | none
+    diet_type: Optional[str] = Field(None, max_length=30)  # vegan | vegetarian | keto | paleo | none
 
 
 class ChatRequest(BaseModel):
@@ -71,22 +72,23 @@ class UserCreate(BaseModel):
                           pattern=r"^[a-zA-Z0-9_.-]+$",
                           description="Nama unik user (hanya huruf, angka, dot, strip, underscore. Tanpa spasi.)")
     password: str = Field(..., min_length=1, max_length=72, description="Password user")
-    phone: Optional[str] = Field(None, description="Nomor WhatsApp (misal: 08123456789)")
+    phone: Optional[str] = Field(None, max_length=25, description="Nomor WhatsApp (misal: 08123456789)")
 
 
 class UserProfileUpdate(BaseModel):
-    """Request body untuk menyimpan / update profil kebugaran user."""
-    age:               Optional[int]   = None
-    gender:            Optional[str]   = None   # male / female
-    weight_kg:         Optional[float] = None
-    height_m:          Optional[float] = None
-    goal:              Optional[str]   = None   # weight_loss | muscle_gain | maintenance | endurance
-    experience_level:  Optional[str]   = None   # beginner | intermediate | advanced
-    workout_frequency: Optional[int]   = None
-    session_duration:  Optional[float] = None
-    workout_type:      Optional[str]   = None
-    equipment:         Optional[str]   = None
-    diet_type:         Optional[str]   = None
+    """Request body untuk menyimpan / update profil kebugaran user.
+    Panjang teks mengikuti ukuran kolom di tabel user_profiles."""
+    age:               Optional[int]   = Field(None, ge=1, le=120)
+    gender:            Optional[str]   = Field(None, max_length=10)   # male / female
+    weight_kg:         Optional[float] = Field(None, gt=0, le=500)
+    height_m:          Optional[float] = Field(None, gt=0, le=3)
+    goal:              Optional[str]   = Field(None, max_length=50)   # weight_loss | muscle_gain | maintenance | endurance
+    experience_level:  Optional[str]   = Field(None, max_length=20)   # beginner | intermediate | advanced
+    workout_frequency: Optional[int]   = Field(None, ge=0, le=14)
+    session_duration:  Optional[float] = Field(None, ge=0, le=1440)
+    workout_type:      Optional[str]   = Field(None, max_length=50)
+    equipment:         Optional[str]   = Field(None, max_length=100)
+    diet_type:         Optional[str]   = Field(None, max_length=30)
     no_gluten:         Optional[bool]  = False
     no_dairy:          Optional[bool]  = False
     no_nuts:           Optional[bool]  = False
@@ -131,12 +133,13 @@ class ChatRequestDB(BaseModel):
 
 class PlanGenerateRequest(BaseModel):
     """Request untuk generate workout / meal plan terstruktur."""
-    plan_type: Optional[str] = Field("workout", description="'workout' atau 'meal'")
-    goal: Optional[str] = Field(None, description="weight_loss | muscle_gain | maintenance | endurance")
-    level: Optional[str] = Field(None, description="beginner | intermediate | advanced")
-    days_per_week: Optional[int] = Field(3, description="Jumlah hari latihan per minggu")
-    equipment: Optional[str] = Field(None, description="Full Gym | Dumbbells | Bodyweight")
-    diet_type: Optional[str] = Field(None, description="vegan | vegetarian | keto | paleo | normal")
-    allergies: Optional[List[str]] = Field(default_factory=list, description="Daftar alergen")
+    plan_type: Optional[str] = Field("workout", max_length=20, description="'workout' atau 'meal'")
+    goal: Optional[str] = Field(None, max_length=50, description="weight_loss | muscle_gain | maintenance | endurance")
+    level: Optional[str] = Field(None, max_length=30, description="beginner | intermediate | advanced")
+    days_per_week: Optional[int] = Field(3, ge=1, le=7, description="Jumlah hari latihan per minggu")
+    equipment: Optional[str] = Field(None, max_length=100, description="Full Gym | Dumbbells | Bodyweight")
+    diet_type: Optional[str] = Field(None, max_length=30, description="vegan | vegetarian | keto | paleo | normal")
+    allergies: Optional[List[Annotated[str, Field(max_length=50)]]] = Field(
+        default_factory=list, max_length=10, description="Daftar alergen")
     notes: Optional[str] = Field(None, max_length=1000, description="Catatan tambahan dari user")
 

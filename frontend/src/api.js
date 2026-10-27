@@ -32,6 +32,13 @@ api.interceptors.response.use(undefined, (error) => {
   return Promise.reject(error)
 })
 
+// Pesan error dari backend sebagai teks. Detail 422 FastAPI berupa array objek,
+// jadi pakai fallback agar tidak dirender langsung oleh React.
+export function errorDetail(error, fallback) {
+  const detail = error.response?.data?.detail
+  return typeof detail === 'string' && detail ? detail : fallback
+}
+
 // true hanya jika server menyatakan sedang maintenance (database tidak bisa diakses / MAINTENANCE_MODE).
 // Gangguan jaringan biasa tidak dianggap maintenance agar user tetap bisa membuka halaman login.
 export async function fetchMaintenance() {

@@ -27,8 +27,8 @@ async def get_all_workouts():
 
 @router.get("/search", dependencies=[Depends(get_current_user)])
 async def search_workouts(
-    body_part: Optional[str] = Query(None, description="Contoh: Chest, Back, Legs"),
-    muscle: Optional[str] = Query(None, description="Contoh: Upper Chest, Hamstring"),
+    body_part: Optional[str] = Query(None, max_length=50, description="Contoh: Chest, Back, Legs"),
+    muscle: Optional[str] = Query(None, max_length=50, description="Contoh: Upper Chest, Hamstring"),
 ):
     """Cari workout berdasarkan body_part atau muscle group. (Backward compatibility)"""
     if body_part:
@@ -41,21 +41,21 @@ async def search_workouts(
 
 
 @router.get("/body-parts")
-async def get_body_parts(db: Session = Depends(get_db)):
+def get_body_parts(db: Session = Depends(get_db)):
     """Daftar unique body parts yang tersedia."""
     parts = [part for (part,) in db.query(DBWorkout.body_part).filter(DBWorkout.body_part.isnot(None)).distinct().all()]
     return APIResponse(success=True, data=parts, total=len(parts))
 
 
 @router.get("/muscles")
-async def get_muscle_types(db: Session = Depends(get_db)):
+def get_muscle_types(db: Session = Depends(get_db)):
     """Daftar unique muscle types yang tersedia."""
     muscles = [muscle for (muscle,) in db.query(DBWorkout.type_of_muscle).filter(DBWorkout.type_of_muscle.isnot(None)).distinct().all()]
     return APIResponse(success=True, data=muscles, total=len(muscles))
 
 
 @router.get("/generate-split")
-async def generate_weekly_split(
+def generate_weekly_split(
     days: int = Query(3, ge=1, le=6, description="Hari latihan per minggu"),
     body_parts: Optional[str] = Query(None, description="Comma-separated: Chest,Back,Legs"),
     db: Session = Depends(get_db),
@@ -111,7 +111,7 @@ async def generate_weekly_split(
 
 @router.get("/gif/search", dependencies=[Depends(get_current_user)])
 async def search_exercise_gif(
-    q: str = Query(..., description="Nama gerakan, contoh: push up, squat, curl")
+    q: str = Query(..., min_length=1, max_length=100, description="Nama gerakan, contoh: push up, squat, curl")
 ):
     """
     Cari latihan berdasarkan nama dari ExerciseDB.
@@ -139,7 +139,7 @@ async def get_all_exercise_gifs(
 
 @router.get("/gif/body-part", dependencies=[Depends(get_current_user)])
 async def search_exercise_gif_by_body_part(
-    body_part: str = Query(..., description="Body part, contoh: chest, back, legs, shoulders")
+    body_part: str = Query(..., min_length=1, max_length=50, description="Body part, contoh: chest, back, legs, shoulders")
 ):
     """
     Ambil latihan berdasarkan body part dari ExerciseDB.

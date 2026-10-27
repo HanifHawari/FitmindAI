@@ -109,6 +109,68 @@ class SecurityTests(unittest.TestCase):
         }, headers=alice)
         self.assertEqual(response.status_code, 422)
 
+    def test_register_accepts_only_a_single_phone_number(self):
+        for phone in ("0812345678,0813456789", "08123", "abc12345678"):
+            response = self.client.post("/api/users/register", json={"username": "eve", "password": "Password123!", "phone": phone})
+            self.assertEqual(response.status_code, 400)
+        response = self.client.post("/api/users/register", json={"username": "eve", "password": "Password123!", "phone": "+62 812-3456-7890"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["phone"], "+6281234567890")
+
+    def test_whatsapp_rejects_stored_phone_lists(self):
+        from unittest.mock import patch
+        from database.db_models import User
+
+        alice = self._register_and_login("alice")
+        with sessionmaker(bind=self.engine)() as db:
+            db.query(User).filter(User.username == "alice").update({"phone": "0812345678,0813456789"})
+            db.commit()
+        with patch("routers.whatsapp.FONNTE_TOKEN", "test-token"):
+            response = self.client.post("/api/whatsapp/send-plan", json={"plan_type": "workout", "title": "A"}, headers=alice)
+        self.assertEqual(response.status_code, 400)
+
+    def test_login_is_throttled_after_repeated_failures(self):
+        from routers import users
+
+        self._register_and_login("mallory")
+        try:
+            for _ in range(10):
+                response = self.client.post("/api/users/login", json={"username": "mallory", "password": "salah-salah"})
+                self.assertEqual(response.status_code, 401)
+            response = self.client.post("/api/users/login", json={"username": "mallory", "password": "Password123!"})
+            self.assertEqual(response.status_code, 429)
+        finally:
+            users._login_failures.reset("mallory")
+
+    def test_calendar_export_requires_login_and_tolerates_bad_times(self):
+        plan = {"plan_type": "meal", "title": "Menu", "meals": [
+            {"meal_name": "Sarapan", "time": "25:99", "foods": [{"name": "Oat", "portion": "100g", "calories": 350.5}]}
+        ]}
+        self.assertEqual(self.client.post("/api/calendar/export", json=plan).status_code, 401)
+        alice = self._register_and_login("alice")
+        response = self.client.post("/api/calendar/export", json=plan, headers=alice)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"BEGIN:VCALENDAR", response.content)
+
+    def test_profile_values_must_fit_database_columns(self):
+        alice = self._register_and_login("alice")
+        self.assertEqual(self.client.put("/api/users/alice/profile", json={"gender": "x" * 11}, headers=alice).status_code, 422)
+        self.assertEqual(self.client.put("/api/users/alice/profile", json={"age": 25, "gender": "Male"}, headers=alice).status_code, 200)
+
+    def test_chat_history_accepts_long_ai_answers(self):
+        from models import ChatRequestDB
+
+        request = ChatRequestDB(username="alice", message="lanjut", history=[{"role": "assistant", "content": "x" * 5000}])
+        self.assertEqual(len(request.history[0].content), 5000)
+
+    def test_exercise_requests_cannot_escape_their_endpoint(self):
+        from exercise_api import _segment, is_valid_exercise_id
+
+        self.assertEqual(_segment("../exercise/0001"), "..%2Fexercise%2F0001")
+        self.assertFalse(is_valid_exercise_id("../image"))
+        self.assertTrue(is_valid_exercise_id("0001"))
+        self.assertEqual(self.client.get("/api/workout/gif/image/..%2F..%2Fstatus").status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

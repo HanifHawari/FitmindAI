@@ -78,7 +78,8 @@
   padding: clamp(24px, 4vw, 44px);
   border-left: 4px solid #22c55e;
 }
-.dash-hero-image { width: 30%; max-height: 300px; min-height: 250px; padding: 18px; border-left: 1px solid #303842; background: #151b21; object-fit: contain; }
+.dash-hero-image { width: 30%; min-height: 250px; display: grid; place-items: center; padding: 18px; border-left: 1px solid #303842; background: #151b21; }
+.dash-hero-logo { width: 100%; max-width: 260px; aspect-ratio: 1; object-fit: contain; }
 .dash-eyebrow { color: #75ff9e; font-size: 11px; font-weight: 700; letter-spacing: .13em; }
 .dash-hero h1 { max-width: 640px; margin: 14px 0 8px; font-size: clamp(27px, 3vw, 42px); line-height: 1.12; letter-spacing: -.035em; }
 .dash-hero h1 span { color: #75ff9e; overflow-wrap: anywhere; }
@@ -183,8 +184,7 @@
   .sidebar-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 190; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); min-height: 66px; padding: 5px 4px calc(5px + env(safe-area-inset-bottom)); border-top: 1px solid #303842; background: #161b22; }
   .sidebar-bottom-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; border-radius: 8px; color: #a8b5b1; font-size: 10px; text-decoration: none; }
   .sidebar-bottom-nav a.active { color: #75ff9e; }
-  .sidebar-bottom-nav svg { width: 19px; height: 19px; opacity: 1; }
-  .sidebar-bottom-nav a.active svg { stroke: #75ff9e; }
+  .sidebar-bottom-nav .nav-icon { width: 19px; height: 19px; opacity: 1; }
   .dashboard-main.dashboard-main { padding: 88px 16px calc(88px + env(safe-area-inset-bottom)); }
   .dash-hero { flex-direction: column; border-radius: 16px; }
   .dash-hero-copy { padding: 24px 20px; }
