@@ -93,7 +93,6 @@ const questions = [
 const iconPaths = {
   arrow: <><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>,
   check: <><path d="m5 12 4 4L19 6" /></>,
-  chat: <><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6.5A7.5 7.5 0 1 1 20 11.5Z" /><path d="M8 11h8M8 14h5" /></>,
   menu: <><path d="M4 7h16M4 12h16M4 17h16" /></>,
   close: <><path d="M5 5l14 14M19 5 5 19" /></>,
 }
@@ -395,11 +394,10 @@ export default function LandingPage() {
             <div className="landing-chat-copy landing-reveal" data-reveal>
               <h2>Ada pertanyaan tentang latihan atau nutrisi?</h2>
               <p>Buka AI Chat untuk mengajukan pertanyaan. Percakapanmu tersimpan sehingga dapat dibaca kembali saat dibutuhkan.</p>
-              <a className="landing-button landing-button-primary" href="/chat" onClick={handleAuthClick}>Buka AI Chat</a>
             </div>
             <div className="landing-chat-preview landing-reveal" data-reveal>
               <div className="landing-chat-preview-header">
-                <span className="landing-chat-avatar"><Icon name="chat" size={20} /></span>
+                <span className="landing-chat-avatar"><span className="landing-chat-avatar-icon" aria-hidden="true" /></span>
                 <div><strong>FitMindAI Chat</strong><small>Contoh topik yang bisa ditanyakan</small></div>
               </div>
               <div className="landing-chat-preview-body">
@@ -457,18 +455,15 @@ export default function LandingPage() {
             <Link className="landing-brand" to="/">FitMind<span>AI</span></Link>
             <p>Platform kebugaran berbasis AI untuk latihan, nutrisi, dan rencana yang lebih terarah.</p>
           </div>
-          <div><h3>Jelajahi</h3><a href="#fitur">Fitur</a><a href="#personalisasi">Personalisasi</a></div>
-          <div><h3>Fitur aplikasi</h3><a href="/plan" onClick={handleAuthClick}>AI Plan</a><a href="/nutrition" onClick={handleAuthClick}>Nutrisi</a><a href="/workout" onClick={handleAuthClick}>Workout</a></div>
-          <div><h3>Akun & bantuan</h3><a href="/login" onClick={handleAuthClick}>Masuk</a><a href="/register" onClick={handleAuthClick}>Daftar</a><a href="#faq">Pertanyaan Umum</a></div>
+          <nav aria-label="Jelajahi"><h3>Jelajahi</h3>{navItems.map(item => <a key={item.href} href={item.href}>{item.label}</a>)}</nav>
+          <nav aria-label="Aplikasi"><h3>Aplikasi</h3><a href="/plan" onClick={handleAuthClick}>AI Plan</a><a href="/nutrition" onClick={handleAuthClick}>Nutrisi</a><a href="/workout" onClick={handleAuthClick}>Workout</a></nav>
+          <nav aria-label="Akun"><h3>Akun</h3><a href="/login" onClick={handleAuthClick}>Masuk</a><a href="/register" onClick={handleAuthClick}>Daftar</a></nav>
         </div>
-        <div className="landing-shell landing-footer-bottom"><span>© {new Date().getFullYear()} FitMindAI</span><span>Dibuat untuk langkah yang lebih terarah.</span></div>
+        <div className="landing-shell landing-footer-bottom"><span>© {new Date().getFullYear()} FitMindAI. Semua hak dilindungi.</span></div>
       </footer>
 
       <a className="landing-floating-chat" href="/chat" aria-label="Buka AI Chat" title="Buka AI Chat" onClick={handleAuthClick}>
-        <picture>
-          <source srcSet="/pp-ai.png" media="(prefers-reduced-motion: reduce)" />
-          <img src="/chatbot-live.gif" alt="" />
-        </picture>
+        <img src="/robot-hello.svg" alt="" />
       </a>
     </div>
   )

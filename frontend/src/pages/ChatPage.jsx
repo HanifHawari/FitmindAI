@@ -302,11 +302,8 @@ export default function ChatPage({ user }) {
         <div className="chat-messages" style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {messages.length === 0 && (
             <div style={{ textAlign: 'center', marginTop: '14vh' }}>
-              <picture>
-                <source srcSet="/pp-ai.png" media="(prefers-reduced-motion: reduce)" />
-                <img src="/chatbot-live.gif" alt="" width={150} height={123}
-                  style={{ display: 'block', margin: '0 auto 8px', objectFit: 'contain' }} />
-              </picture>
+              <img src="/robot-hello.svg" alt="" width={200} height={172}
+                style={{ display: 'block', margin: '0 auto 8px' }} />
               <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 10 }}>
                 FitMind<span style={{ color: '#22c55e' }}>AI</span>
               </div>
@@ -336,10 +333,16 @@ export default function ChatPage({ user }) {
               justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
             }}>
               {msg.role === 'assistant' && (
-                <div style={{
+                <div role="img" aria-label="FitMindAI" style={{
                   width: 28, height: 28, marginRight: 10, flexShrink: 0, marginTop: 2,
+                  display: 'grid', placeItems: 'center', borderRadius: 8, background: '#22c55e', color: '#082010',
                 }}>
-                  <img src="/pp-ai.png" alt="FitMindAI" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'hue-rotate(-75deg) saturate(.85)' }} />
+                  {/* Ikon yang sama dengan menu AI Chat; PNG dipakai sebagai mask agar warnanya mengikuti `color` */}
+                  <span style={{
+                    width: 16, height: 16, backgroundColor: 'currentColor',
+                    WebkitMask: 'url(/icons/menu/ai-chat.png) center / contain no-repeat',
+                    mask: 'url(/icons/menu/ai-chat.png) center / contain no-repeat',
+                  }} />
                 </div>
               )}
               <div className={`chat-bubble ${msg.role === 'user' ? 'from-user' : 'from-ai'}`} style={{
